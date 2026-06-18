@@ -11,6 +11,20 @@ octo-spec is **git-native** and **Claude Code first**: there is no central serve
 to run and no extra service to install. Clone the repo, and the shared standards
 come with it — reviewable, versioned, and improvable like any other code artifact.
 
+## Built on an open format (OKF)
+
+octo-spec stores its rules, tasks, and journals as plain Markdown with YAML
+frontmatter, compatible with the [Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
+v0.1 — an open, Apache-2.0 knowledge format from Google Cloud's Knowledge Catalog.
+
+This is a deliberate choice: knowledge is best represented in commonly accessible,
+established formats that are readable by humans without tooling, parseable by
+agents without bespoke SDKs, diffable in version control, and portable across
+tools and organizations. By aligning with OKF, an `.octospec/` directory is a
+valid OKF knowledge bundle — any OKF-aware tool or agent can read it — while
+octospec adds its own workflow layer (on-demand rule injection, the 4-phase loop,
+and review gates) on top as permitted OKF extension fields.
+
 ## Two layers
 
 octo-spec is split into two layers so shared standards and per-repo specifics
