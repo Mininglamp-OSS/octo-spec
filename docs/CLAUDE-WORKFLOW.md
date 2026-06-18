@@ -4,14 +4,25 @@ octo-spec is Claude Code first. The 4-phase loop maps to four slash commands
 backed by thin scripts. No central server, no extra service — everything reads
 and writes files in the repo.
 
-## Setup (per repo)
+## Zero install for team members
 
-1. Initialize the skeleton: copy `templates/octospec-init` to `.octospec/`.
+The slash commands are **committed to the repo** under `.claude/commands/`. A team
+member does **not** install anything: `git clone` / `git pull` brings the commands
+with the repo, and Claude Code picks up `/octospec-plan`, `/octospec-go`,
+`/octospec-check`, `/octospec-finish` automatically. Commands version with the
+repo, so everyone is always on the same workflow — nothing to install, nothing to
+keep in sync by hand.
+
+## Setup (once per repo, by a maintainer)
+
+1. Initialize the skeleton: copy `templates/octospec-init` to `.octospec/`
+   (this includes `.claude/commands/`, which moves to the repo root).
 2. Pin the global version in `.octospec/manifest.yaml`.
 3. Run `octospec-sync` to pull global rules into git-ignored `.octospec/_global/`.
 4. Add the octospec block to your repo's `CLAUDE.md` (between
    `<!-- octospec:begin -->` / `<!-- octospec:end -->` markers — the sync owns
    that region; everything outside it is yours).
+5. Commit. From here, every team member just pulls.
 
 ## The loop
 
