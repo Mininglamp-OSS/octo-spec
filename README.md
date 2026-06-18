@@ -33,6 +33,12 @@ never fight each other:
 
 ## The 4-phase loop
 
+```mermaid
+flowchart LR
+    P["Plan"] --> I["Implement"] --> V["Verify"] --> F["Finish"]
+    F -.promote learnings.-> P
+```
+
 ```
 Plan      → write a brief; AI may draft it from existing code, you confirm
 Implement → AI writes code with the relevant rules auto-injected (no commit)
@@ -73,6 +79,11 @@ cp -r <path-to>/octo-spec/templates/octospec-init .octospec
 
 See [`docs/CLAUDE-WORKFLOW.md`](docs/CLAUDE-WORKFLOW.md) for the Claude Code slash
 command workflow.
+
+## Docs
+
+- [Getting started](docs/GETTING-STARTED.md) — 5-minute guide + usage examples + diagrams
+- [Claude Code workflow](docs/CLAUDE-WORKFLOW.md) — slash commands + zero-install model
 
 ## License
 
