@@ -6,12 +6,30 @@ and writes files in the repo.
 
 ## Zero install for team members
 
-The slash commands are **committed to the repo** under `.claude/commands/`. A team
-member does **not** install anything: `git clone` / `git pull` brings the commands
-with the repo, and Claude Code picks up `/octospec-plan`, `/octospec-go`,
-`/octospec-check`, `/octospec-finish` automatically. Commands version with the
-repo, so everyone is always on the same workflow — nothing to install, nothing to
-keep in sync by hand.
+The slash commands **and** the auto-trigger skill are **committed to the repo**
+under `.claude/`. A team member does **not** install anything: `git clone` /
+`git pull` brings them with the repo.
+
+- **Auto-trigger (skill)** — `.claude/skills/octospec-workflow/`. When a developer
+  asks Claude Code to implement/fix/refactor something, the skill's description
+  matches and Claude **runs the 4-phase flow automatically** — no command to
+  remember. Trivial edits (typo/docs/lint/config) are skipped by design.
+- **Manual control (slash commands)** — `.claude/commands/octospec-*`. Use these
+  to drive a single phase on demand: `/octospec-plan`, `/octospec-go`,
+  `/octospec-check`, `/octospec-finish`.
+
+Both version with the repo, so everyone is always on the same workflow — nothing
+to install, nothing to keep in sync by hand.
+
+### Three levels of how the flow runs
+
+| Level | Mechanism | Trigger | Strength |
+|---|---|---|---|
+| Auto | skill | model decides from your request | seamless, probabilistic |
+| Manual | slash command | you type it | precise, opt-in |
+| Enforce | PR template + (future) CI gate | merge time | deterministic |
+
+The skill makes the flow *easy and automatic*; the PR/CI gate makes it *binding*.
 
 ## Setup (once per repo, by a maintainer)
 
