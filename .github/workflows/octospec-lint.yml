@@ -22,3 +22,5 @@ jobs:
         run: ./scripts/octospec-lint.sh .
       - name: Run sync-block regression tests
         run: python3 scripts/test_octospec_sync_block.py
+      - name: Run sync shell-wrapper regression test
+        run: bash scripts/test_octospec_sync_sh.sh

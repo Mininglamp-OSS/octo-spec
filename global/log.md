@@ -14,8 +14,13 @@ Creation / Update / Deprecation of a knowledge unit.
   with a regression suite `scripts/test_octospec_sync_block.py` wired into CI. Syncs the
   block idempotently into every agent-instruction file present (CLAUDE.md, AGENTS.md,
   GEMINI.md, QWEN.md); content outside the markers is preserved. This makes the
-  Layer-1 auto-load behavior described in docs/INTEGRATION.md real for all agents,
+  Layer-1 auto-load behavior (the integration design tracked in PR #2) real for
+  all agents,
   not just Claude Code.
+- **Fix** — octospec-sync.sh now accumulates per-file failures and exits
+  non-zero (a refused/malformed agent file no longer reports success);
+  added `~~~` fence support and shell-wrapper + `~~~` regression tests to CI;
+  removed a committed `.pyc` and added `__pycache__/`/`*.pyc` to .gitignore.
 
 - **Update** — Adopted OKF v0.1 compatible frontmatter across all global rules.
   Added the OKF fields `type`, `title`, `description`, `tags`, `timestamp` to

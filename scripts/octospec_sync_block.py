@@ -32,7 +32,7 @@ import sys
 
 BEGIN = "<!-- octospec:begin -->"
 END = "<!-- octospec:end -->"
-FENCE_PREFIX = "```"
+FENCE_PREFIXES = ("```", "~~~")
 
 
 def find_marker_lines(lines):
@@ -42,12 +42,20 @@ def find_marker_lines(lines):
     (a marker appearing more than once, or only one of the pair present, or end
     before begin)."""
     in_fence = False
+    fence_marker = None
     begins = []
     ends = []
     for i, raw in enumerate(lines):
         stripped = raw.strip()
-        if stripped.startswith(FENCE_PREFIX):
-            in_fence = not in_fence
+        matched_fence = next((p for p in FENCE_PREFIXES if stripped.startswith(p)), None)
+        if matched_fence is not None:
+            # Only the same fence char closes the fence (``` not closed by ~~~).
+            if not in_fence:
+                in_fence = True
+                fence_marker = matched_fence
+            elif matched_fence == fence_marker:
+                in_fence = False
+                fence_marker = None
             continue
         if in_fence:
             continue

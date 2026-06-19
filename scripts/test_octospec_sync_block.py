@@ -77,6 +77,16 @@ check("fenced example markers ignored (real block updated, example kept)",
       "example in docs" in final and "MANAGED v2" in final and "TEAM RULE KEEP ME" in final,
       repr(final))
 
+# 2b. P1: marker inside a ~~~ fenced block must also be ignored.
+fenced2 = (
+    "# CLAUDE\n\n~~~\n" + BEGIN + "\nexample\n" + END + "\n~~~\n\n"
+    "TEAM RULE KEEP ME\n\n" + BEGIN + "\nOLD\n" + END + "\n"
+)
+res, final, _ = run(fenced2)
+check("~~~ fenced example markers ignored",
+      "example" in final and "MANAGED v2" in final and "TEAM RULE KEEP ME" in final,
+      repr(final))
+
 # 3. P1: orphan begin (no end) must REFUSE, not append.
 orphan = "# CLAUDE\n\n" + BEGIN + "\nrule beta KEEP ME\n"
 res, final, _ = run(orphan)

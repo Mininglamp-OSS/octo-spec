@@ -67,6 +67,7 @@ elif [ ! -f "$SYNC_PY" ]; then
 else
   # Update every known instruction file that exists.
   CANDIDATES="CLAUDE.md AGENTS.md GEMINI.md QWEN.md"
+  rc=0
   any_present=0
   for t in $CANDIDATES; do
     [ -f "$REPO_ROOT/$t" ] || continue
@@ -79,17 +80,24 @@ else
       echo "octospec: AGENTS.md -> $res"
     else
       echo "octospec: AGENTS.md -> FAILED: $res" >&2
+      rc=1
     fi
   else
     for t in $CANDIDATES; do
       [ -f "$REPO_ROOT/$t" ] || continue
-      # Per-file isolation: one refused/failed file must not abort the rest.
+      # Per-file isolation: one refused/failed file must not abort the rest,
+      # but it MUST be reflected in the final exit code.
       if res="$(python3 "$SYNC_PY" "$REPO_ROOT/$t" "$BLOCK_SRC" 2>&1)"; then
         echo "octospec: $t -> $res"
       else
         echo "octospec: $t -> FAILED: $res" >&2
+        rc=1
       fi
     done
+  fi
+  if [ "$rc" -ne 0 ]; then
+    echo "octospec: one or more agent files failed to sync" >&2
+    exit "$rc"
   fi
 fi
 
