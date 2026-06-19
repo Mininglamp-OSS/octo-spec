@@ -1,4 +1,10 @@
 ---
+type: Rule
+title: Pull request conventions
+description: How pull requests must be structured, described, and linked.
+tags: ["pull-request", "review"]
+timestamp: 2026-06-19T00:00:00Z
+# --- octospec extension fields (OKF-permitted; consumers must preserve) ---
 id: pr
 tier: global
 priority: 75

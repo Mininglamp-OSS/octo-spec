@@ -1,4 +1,10 @@
 ---
+type: Rule
+title: Commit conventions
+description: Use Conventional Commits for all commit messages.
+tags: ["commit", "git"]
+timestamp: 2026-06-19T00:00:00Z
+# --- octospec extension fields (OKF-permitted; consumers must preserve) ---
 id: commit
 tier: global
 priority: 70

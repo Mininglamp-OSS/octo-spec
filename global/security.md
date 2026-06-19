@@ -1,4 +1,10 @@
 ---
+type: Rule
+title: Security red lines
+description: Non-negotiable security rules; any violation is a P0 blocker.
+tags: ["security", "auth", "secret", "credential"]
+timestamp: 2026-06-19T00:00:00Z
+# --- octospec extension fields (OKF-permitted; consumers must preserve) ---
 id: security
 tier: global
 priority: 95
