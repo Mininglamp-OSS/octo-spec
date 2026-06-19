@@ -20,3 +20,5 @@ jobs:
         run: pip install pyyaml
       - name: Run OKF conformance lint
         run: ./scripts/octospec-lint.sh .
+      - name: Run sync-block regression tests
+        run: python3 scripts/test_octospec_sync_block.py

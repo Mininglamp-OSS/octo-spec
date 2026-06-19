@@ -8,11 +8,14 @@ Creation / Update / Deprecation of a knowledge unit.
 ## 2026-06-19
 
 - **Creation** — Added `templates/octospec-init/AGENT-BLOCK.md` (one tool-neutral
-  agent-instruction source) and rewrote `scripts/octospec-sync.sh` to sync it
-  idempotently, between `octospec:begin/end` markers, into every agent-instruction
-  file present (CLAUDE.md, AGENTS.md, GEMINI.md, ...). Content outside the markers
-  is preserved. This makes the Layer-1 auto-load behavior described in
-  docs/INTEGRATION.md real for all agents, not just Claude Code.
+  agent-instruction source) and a YAML/marker-safe sync: `scripts/octospec_sync_block.py`
+  (whole-line + fence-aware marker detection, refuses malformed/duplicate markers,
+  atomic writes, CRLF-preserving) driven by the rewritten `scripts/octospec-sync.sh`,
+  with a regression suite `scripts/test_octospec_sync_block.py` wired into CI. Syncs the
+  block idempotently into every agent-instruction file present (CLAUDE.md, AGENTS.md,
+  GEMINI.md, QWEN.md); content outside the markers is preserved. This makes the
+  Layer-1 auto-load behavior described in docs/INTEGRATION.md real for all agents,
+  not just Claude Code.
 
 - **Update** — Adopted OKF v0.1 compatible frontmatter across all global rules.
   Added the OKF fields `type`, `title`, `description`, `tags`, `timestamp` to

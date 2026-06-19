@@ -85,10 +85,14 @@ Finish    → a final check runs, then new learnings are promoted back into rule
 # 1. In a business repo, initialize the .octospec/ skeleton
 cp -r <path-to>/octo-spec/templates/octospec-init .octospec
 
-# 2. Pin the global version in .octospec/manifest.yaml, then sync the global rules
-./.octospec/scripts/octospec-sync.sh    # pulls global rules into git-ignored _global/
-
-# 3. Point Claude Code at it: add the octospec block to your repo's CLAUDE.md
+# 2. Pin the global version in .octospec/manifest.yaml, then sync. Point
+#    GLOBAL_SRC at a checkout of octo-spec at that pinned version.
+GLOBAL_SRC=/path/to/octo-spec ./.octospec/scripts/octospec-sync.sh
+#    This vendors the global rules into git-ignored .octospec/_global/ AND
+#    writes the octospec agent-instruction block into your agent files
+#    (CLAUDE.md / AGENTS.md / GEMINI.md / QWEN.md), between managed markers.
+#    Re-run any time you bump the pin; it is idempotent and preserves anything
+#    outside the markers.
 ```
 
 See [`docs/CLAUDE-WORKFLOW.md`](docs/CLAUDE-WORKFLOW.md) for the Claude Code slash

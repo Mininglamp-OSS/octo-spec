@@ -36,11 +36,14 @@ The skill makes the flow *easy and automatic*; the PR/CI gate makes it *binding*
 1. Initialize the skeleton: copy `templates/octospec-init` to `.octospec/`
    (this includes `.claude/commands/`, which moves to the repo root).
 2. Pin the global version in `.octospec/manifest.yaml`.
-3. Run `octospec-sync` to pull global rules into git-ignored `.octospec/_global/`.
-4. Add the octospec block to your repo's `CLAUDE.md` (between
+3. Run `octospec-sync` (with `GLOBAL_SRC` pointing at a checkout of octo-spec
+   at the pinned version). This pulls global rules into git-ignored
+   `.octospec/_global/` **and** writes the octospec block into your agent files
+   (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` / `QWEN.md`) between
    `<!-- octospec:begin -->` / `<!-- octospec:end -->` markers — the sync owns
-   that region; everything outside it is yours).
-5. Commit. From here, every team member just pulls.
+   that region; everything outside it is yours. If no agent file exists yet, it
+   bootstraps `AGENTS.md`.
+4. Commit. From here, every team member just pulls.
 
 ## The loop
 
