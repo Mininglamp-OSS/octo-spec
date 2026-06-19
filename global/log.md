@@ -22,9 +22,8 @@ Creation / Update / Deprecation of a knowledge unit.
   succeeds instead of failing with "no such file or directory". CI asserts the
   template copies never drift from the canonical scripts, and runs the quickstart
   end-to-end.
-
-## 2026-06-19
-  agent-instruction source) and a YAML/marker-safe sync: `scripts/octospec_sync_block.py`
+- **Creation** — Added a single canonical agent-instruction source and a
+  YAML/marker-safe sync: `scripts/octospec_sync_block.py`
   (whole-line + fence-aware marker detection, refuses malformed/duplicate markers,
   atomic writes, CRLF-preserving) driven by the rewritten `scripts/octospec-sync.sh`,
   with a regression suite `scripts/test_octospec_sync_block.py` wired into CI. Syncs the
