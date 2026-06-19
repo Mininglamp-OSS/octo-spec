@@ -16,6 +16,11 @@ Creation / Update / Deprecation of a knowledge unit.
   `global/log.md` change log.
 - **Creation** — Added `scripts/octospec-lint.sh` (OKF conformance check:
   every knowledge file must have frontmatter with a non-empty `type`).
+- **Update** — Made the slash commands/skill/templates OKF-aware so generated
+  artifacts stay conformant: `_brief.template.md` now carries `type: Task`
+  frontmatter; `/octospec-plan` and `/octospec-finish` (+ the workflow skill)
+  instruct writing OKF frontmatter for task briefs and journals and updating
+  `log.md`.
 
 ## 2026-06-18
 
