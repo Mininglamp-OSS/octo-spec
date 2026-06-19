@@ -20,8 +20,11 @@ agent-instruction file and the `.octospec/` directory:
 - (future: Gemini reads `GEMINI.md`, Cursor reads `.cursor/rules`, etc.)
 
 octo-spec keeps **one source of truth** for the instruction block and syncs it
-into every agent-instruction file that exists in the repo (via `octospec-sync`),
-using `<!-- octospec:begin -->` / `<!-- octospec:end -->` markers. The wording is
+into the repo's agent-instruction files (via `octospec-sync`): the two defaults
+(`CLAUDE.md`, `AGENTS.md`) are **created if missing** so checkout-anchored agents
+always find the block, while other files (`GEMINI.md`, `QWEN.md`, …) are synced
+only when they already exist. It uses
+`<!-- octospec:begin -->` / `<!-- octospec:end -->` markers. The wording is
 tool-neutral, so whichever file an agent reads, it gets the same guidance:
 read the matching `.octospec/rules/`, capture a task brief, fill the PR's
 comprehension questions.
@@ -53,7 +56,7 @@ can't merge without passing Layer 2.
 |---|---|---|---|---|
 | **1. Local Claude Code** | Claude Code in the checkout | `CLAUDE.md` + `.octospec/` | ✅ auto | Plus `/octospec-*` slash commands |
 | **2b. Orchestrator → local Claude Code / Codex** | CC / Codex spawned in the checkout | `CLAUDE.md` / `AGENTS.md` | ✅ auto | As long as the spawn cwd is the repo root |
-| **2c. Orchestrator → dispatch system** | Agent runs CC/Codex in a checkout | `CLAUDE.md` / `AGENTS.md` + brief | ✅ auto | Dispatch brief adds a "read `.octospec`" pointer; dogfooded on #344 → PR #420 |
+| **2c. Orchestrator → dispatch system** | Agent runs CC/Codex in a checkout | `CLAUDE.md` / `AGENTS.md` + brief | ✅ auto | Dispatch brief adds a "read `.octospec`" pointer; dogfooded on `octo-server` (issue #344 → PR #420) |
 | **2a. Orchestrator writes code directly** | The orchestrator itself (not checkout-anchored) | — | ⚠️ **not auto** | See decision below |
 
 ### Decision: scenario 2a is closed, not patched
