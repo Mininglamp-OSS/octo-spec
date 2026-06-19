@@ -36,9 +36,12 @@ where the standard is actually enforced, regardless of who or what wrote the cod
 
 - **PR template** — Linked Spec + the COMPREHENSION three questions
 - **Comprehension gate** — load-bearing / architectural / P0 changes require
-  demonstrated understanding before merge
+  demonstrated understanding before merge *(today: template + review convention;
+  not yet hard-enforced in CI — see `docs/GETTING-STARTED.md`)*
 - **Review** — human or AI reviewer applies the rules
-- **CI** — repo tests + `octospec-lint` (OKF conformance for the spec repo)
+- **CI** — repo tests + `octospec-lint` (OKF conformance for the spec repo).
+  *Today CI enforces lint/tests; the comprehension gate is a review-time
+  convention, planned to be CI-enforced.*
 
 Because enforcement lives at the PR, **Layer 1 doesn't have to be perfect**.
 Even if an entry point fails to auto-load the rules, load-bearing changes still
@@ -50,7 +53,7 @@ can't merge without passing Layer 2.
 |---|---|---|---|---|
 | **1. Local Claude Code** | Claude Code in the checkout | `CLAUDE.md` + `.octospec/` | ✅ auto | Plus `/octospec-*` slash commands |
 | **2b. Orchestrator → local Claude Code / Codex** | CC / Codex spawned in the checkout | `CLAUDE.md` / `AGENTS.md` | ✅ auto | As long as the spawn cwd is the repo root |
-| **2c. Orchestrator → dispatch (multica)** | Agent runs CC/Codex in a checkout | `CLAUDE.md` / `AGENTS.md` + brief | ✅ auto | Dispatch brief adds a "read `.octospec`" pointer; dogfooded on #344 → PR #420 |
+| **2c. Orchestrator → dispatch system** | Agent runs CC/Codex in a checkout | `CLAUDE.md` / `AGENTS.md` + brief | ✅ auto | Dispatch brief adds a "read `.octospec`" pointer; dogfooded on #344 → PR #420 |
 | **2a. Orchestrator writes code directly** | The orchestrator itself (not checkout-anchored) | — | ⚠️ **not auto** | See decision below |
 
 ### Decision: scenario 2a is closed, not patched
