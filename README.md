@@ -101,12 +101,14 @@ command workflow.
 
 ## OKF conformance
 
-The knowledge files (the global rule files and any repo `rules/*.md`) are valid
-OKF units: each starts with a properly terminated YAML frontmatter block
-declaring a non-empty `type`. The structural files `global/index.md` and
-`global/log.md` are intentionally exempt (OKF index/log are plain markdown with
-no frontmatter). CI enforces this with `scripts/octospec-lint.sh`, so the format
-never drifts. Run it locally with:
+The knowledge files (the global rule files, any repo `rules/*.md`, and per-task
+`tasks/**` briefs / `journal/**` entries) are valid OKF units: each starts with a
+properly terminated YAML frontmatter block that parses as valid YAML and declares
+a non-empty `type`. The structural files `index.md` and `log.md` are intentionally
+exempt (OKF index/log are plain markdown with no frontmatter), as are fill-in
+`*.template.md` scaffolds. CI enforces this with `scripts/octospec-lint.sh` (a
+YAML-aware linter; needs `python3` + PyYAML), so the format never drifts. Run it
+locally with:
 
 ```bash
 ./scripts/octospec-lint.sh .

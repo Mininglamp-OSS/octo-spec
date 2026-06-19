@@ -17,6 +17,11 @@ Creation / Update / Deprecation of a knowledge unit.
 - **Creation** — Added `scripts/octospec-lint.sh` (OKF conformance check:
   every knowledge file must have a properly terminated frontmatter block with a
   non-empty `type`; opt-in scope = global rules + `*/rules/`).
+- **Update** — Rewrote the linter to be YAML-aware (`scripts/octospec-lint.py`,
+  wrapped by the `.sh`): parses frontmatter as YAML, rejects malformed YAML and
+  quoted-empty `type: ""`, normalizes BOM/CRLF, fails closed on a bad/empty scan
+  root, and extends scope to `tasks/**` briefs and `journal/**` entries. Bumped
+  the starter template's `inherits` pin to `octo-spec@1.1.0`.
 - **Update** — Made the slash commands/skill/templates OKF-aware so generated
   artifacts stay conformant: `_brief.template.md` now carries `type: Task`
   frontmatter; `/octospec-plan` and `/octospec-finish` (+ the workflow skill)
