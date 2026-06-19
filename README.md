@@ -98,6 +98,7 @@ command workflow.
 
 - [Getting started](docs/GETTING-STARTED.md) — 5-minute guide + usage examples + diagrams
 - [Claude Code workflow](docs/CLAUDE-WORKFLOW.md) — slash commands + zero-install model
+- [Integration architecture](docs/INTEGRATION.md) — how every entry point (Claude Code, Codex, Octo bots, dispatch) picks up the standard
 
 ## OKF conformance
 
