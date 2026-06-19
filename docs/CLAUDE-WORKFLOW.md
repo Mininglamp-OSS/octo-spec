@@ -41,8 +41,10 @@ The skill makes the flow *easy and automatic*; the PR/CI gate makes it *binding*
    `.octospec/_global/` **and** writes the octospec block into your agent files
    (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` / `QWEN.md`) between
    `<!-- octospec:begin -->` / `<!-- octospec:end -->` markers — the sync owns
-   that region; everything outside it is yours. If no agent file exists yet, it
-   bootstraps `AGENTS.md`.
+   that region; everything outside it is yours. `CLAUDE.md` and `AGENTS.md` are
+   the two default entry points — whichever is missing is created so both Claude
+   Code and Codex get the block; `GEMINI.md` / `QWEN.md` are synced only when they
+   already exist.
 4. Commit. From here, every team member just pulls.
 
 ## The loop

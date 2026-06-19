@@ -16,9 +16,11 @@
 # malformed marker state makes the sync REFUSE that file rather than risk
 # clobbering hand-written content (see scripts/octospec_sync_block.py).
 #
-# Bootstrap: if neither CLAUDE.md nor AGENTS.md exists, AGENTS.md is created
-# (the broadly-supported default). Existing files are updated in place; we never
-# force-create an entry-point file the repo didn't already opt into.
+# Bootstrap: CLAUDE.md and AGENTS.md are the two default entry points — whichever
+# is missing is created so BOTH Claude Code (CLAUDE.md) and Codex (AGENTS.md) get
+# the block, even when the repo started with only one of them (the common case for
+# an existing Claude Code repo that has only CLAUDE.md). GEMINI.md / QWEN.md are
+# only updated when they already exist; we never force-create those.
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -65,36 +67,40 @@ if [ ! -f "$BLOCK_SRC" ]; then
 elif [ ! -f "$SYNC_PY" ]; then
   echo "octospec: WARNING no octospec_sync_block.py at $SYNC_PY; skipping instruction sync" >&2
 else
-  # Update every known instruction file that exists.
-  CANDIDATES="CLAUDE.md AGENTS.md GEMINI.md QWEN.md"
+  # Two default entry points (CLAUDE.md for Claude Code, AGENTS.md for Codex)
+  # are created if missing; the rest are only synced when already present.
+  DEFAULTS="CLAUDE.md AGENTS.md"
+  OPTIONAL="GEMINI.md QWEN.md"
   rc=0
-  any_present=0
-  for t in $CANDIDATES; do
-    [ -f "$REPO_ROOT/$t" ] || continue
-    any_present=1
-  done
-  # Bootstrap: if no instruction file exists at all, create AGENTS.md.
-  if [ "$any_present" -eq 0 ]; then
-    echo "octospec: no instruction file present; bootstrapping AGENTS.md"
-    if res="$(python3 "$SYNC_PY" "$REPO_ROOT/AGENTS.md" "$BLOCK_SRC" --create 2>&1)"; then
-      echo "octospec: AGENTS.md -> $res"
-    else
-      echo "octospec: AGENTS.md -> FAILED: $res" >&2
-      rc=1
-    fi
-  else
-    for t in $CANDIDATES; do
-      [ -f "$REPO_ROOT/$t" ] || continue
-      # Per-file isolation: one refused/failed file must not abort the rest,
-      # but it MUST be reflected in the final exit code.
+  # Per-file isolation: one refused/failed file must not abort the rest, but it
+  # MUST be reflected in the final exit code.
+  for t in $DEFAULTS; do
+    if [ -f "$REPO_ROOT/$t" ]; then
       if res="$(python3 "$SYNC_PY" "$REPO_ROOT/$t" "$BLOCK_SRC" 2>&1)"; then
         echo "octospec: $t -> $res"
       else
         echo "octospec: $t -> FAILED: $res" >&2
         rc=1
       fi
-    done
-  fi
+    else
+      echo "octospec: $t missing; bootstrapping"
+      if res="$(python3 "$SYNC_PY" "$REPO_ROOT/$t" "$BLOCK_SRC" --create 2>&1)"; then
+        echo "octospec: $t -> $res"
+      else
+        echo "octospec: $t -> FAILED: $res" >&2
+        rc=1
+      fi
+    fi
+  done
+  for t in $OPTIONAL; do
+    [ -f "$REPO_ROOT/$t" ] || continue
+    if res="$(python3 "$SYNC_PY" "$REPO_ROOT/$t" "$BLOCK_SRC" 2>&1)"; then
+      echo "octospec: $t -> $res"
+    else
+      echo "octospec: $t -> FAILED: $res" >&2
+      rc=1
+    fi
+  done
   if [ "$rc" -ne 0 ]; then
     echo "octospec: one or more agent files failed to sync" >&2
     exit "$rc"
