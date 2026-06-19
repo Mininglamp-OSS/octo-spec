@@ -1,4 +1,10 @@
 ---
+type: Rule
+title: Example rule (delete me)
+description: Starter rule showing the expected OKF-compatible shape.
+tags: ["example"]
+timestamp: 2026-06-19T00:00:00Z
+# --- octospec extension fields (OKF-permitted; consumers must preserve) ---
 id: example-rule
 tier: repo
 priority: 50

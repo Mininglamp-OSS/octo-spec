@@ -99,6 +99,19 @@ command workflow.
 - [Getting started](docs/GETTING-STARTED.md) — 5-minute guide + usage examples + diagrams
 - [Claude Code workflow](docs/CLAUDE-WORKFLOW.md) — slash commands + zero-install model
 
+## OKF conformance
+
+The knowledge files (`global/*.md`, repo `rules/*.md`) are valid OKF units: each
+starts with YAML frontmatter declaring a non-empty `type`. CI enforces this with
+`scripts/octospec-lint.sh`, so the format never drifts. Run it locally with:
+
+```bash
+./scripts/octospec-lint.sh .
+```
+
+A human-readable rule catalog lives in [`global/index.md`](global/index.md), and
+the change history in [`global/log.md`](global/log.md).
+
 ## License
 
 See [LICENSE](LICENSE).

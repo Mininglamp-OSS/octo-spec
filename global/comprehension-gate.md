@@ -1,4 +1,10 @@
 ---
+type: Rule
+title: Comprehension gate
+description: Load-bearing or architectural changes require demonstrated understanding before merge.
+tags: ["comprehension", "load-bearing", "architecture"]
+timestamp: 2026-06-19T00:00:00Z
+# --- octospec extension fields (OKF-permitted; consumers must preserve) ---
 id: comprehension-gate
 tier: global
 priority: 90

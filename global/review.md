@@ -1,4 +1,10 @@
 ---
+type: Rule
+title: Code review standards
+description: Standards reviewers (human or AI) must apply before approving.
+tags: ["review", "code-review"]
+timestamp: 2026-06-19T00:00:00Z
+# --- octospec extension fields (OKF-permitted; consumers must preserve) ---
 id: review
 tier: global
 priority: 78
