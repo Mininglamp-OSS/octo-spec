@@ -84,8 +84,9 @@ Finish    → a final check runs, then new learnings are promoted back into rule
 ```bash
 # 1. In a business repo, initialize the .octospec/ skeleton. The template ships
 #    its own scripts/ (octospec-sync.sh + octospec_sync_block.py), so the copied
-#    .octospec/ is self-contained — no path back into the octo-spec checkout is
-#    needed to run the sync.
+#    .octospec/ carries the sync scripts themselves — you don't need a path back
+#    into the octo-spec checkout just to locate the scripts. (The global rules are
+#    still sourced from an octo-spec checkout at sync time; see GLOBAL_SRC below.)
 cp -r <path-to>/octo-spec/templates/octospec-init .octospec
 
 # 2. Pin the global version in .octospec/manifest.yaml, then sync. Point
