@@ -87,6 +87,108 @@ check("~~~ fenced example markers ignored",
       "example" in final and "MANAGED v2" in final and "TEAM RULE KEEP ME" in final,
       repr(final))
 
+# 2c. P1 (CommonMark CM-119/120): a 4-backtick fence is NOT closed by an inner
+# 3-backtick line. A doc that wraps the markers in a ```` block (so it can SHOW
+# an inner ``` example) must have all of its inner content preserved — the old
+# prefix-only fence detection mistook the inner ``` for a close, exited the
+# fence, and then replaced everything between the (now-"real") begin/end inside
+# the example, silently eating user content.
+nested_fence = (
+    "# Docs\n\n"
+    "## How markers look\n\n"
+    "````markdown\n"               # 4-backtick fence OPEN
+    "```\n"                         # inner 3-backtick — must NOT close the fence
+    + BEGIN + "\n"
+    "USER PRECIOUS EXAMPLE CONTENT\n"
+    + END + "\n"
+    "```\n"                         # inner 3-backtick
+    "````\n"                        # 4-backtick fence CLOSE
+    "\nAFTER TEXT\n"
+)
+res, final, _ = run(nested_fence)
+check("4-backtick fence not closed by inner 3-backtick (no data loss)",
+      "USER PRECIOUS EXAMPLE CONTENT" in final and "AFTER TEXT" in final,
+      repr(final))
+
+# 2d. Same nested-fence danger when a REAL managed block exists ABOVE the doc
+# example: the real block updates to v2, the example inside the ```` fence is
+# untouched, and the trailing content survives. This is the truest reproduction
+# of the reported bug (md5 changes because the real block updated, but the
+# fenced example + surrounding content are byte-preserved).
+real_plus_example = (
+    "# CLAUDE\n\npre\n\n"
+    + BEGIN + "\nOLD MANAGED\n" + END + "\n\n"
+    "## How markers look\n\n"
+    "````markdown\n"               # 4-backtick fence OPEN
+    "```\n"
+    + BEGIN + "\n"
+    "INNER EXAMPLE KEEP ME\n"
+    + END + "\n"
+    "```\n"
+    "````\n"
+    "\npost\n"
+)
+res, final, _ = run(real_plus_example)
+check("real block updates while nested 4-backtick example is preserved",
+      res == "updated" and "MANAGED v2" in final and "OLD MANAGED" not in final
+      and "INNER EXAMPLE KEEP ME" in final and final.count(BEGIN) == 2
+      and "pre" in final and "post" in final,
+      repr(final))
+
+# 2e. Tilde length asymmetry (CommonMark): a ~~~~ (4) fence is NOT closed by an
+# inner ~~~ (3) line, mirroring the backtick case.
+nested_tilde = (
+    "# Docs\n\n"
+    "~~~~\n"                        # 4-tilde fence OPEN
+    "~~~\n"                         # inner 3-tilde — must NOT close it
+    + BEGIN + "\n"
+    "TILDE PRECIOUS CONTENT\n"
+    + END + "\n"
+    "~~~\n"
+    "~~~~\n"                        # 4-tilde fence CLOSE
+    "\nAFTER\n"
+)
+res, final, _ = run(nested_tilde)
+check("4-tilde fence not closed by inner 3-tilde (no data loss)",
+      "TILDE PRECIOUS CONTENT" in final and "AFTER" in final,
+      repr(final))
+
+# 2f. Info string on a fence opener (```` ```markdown ````) must still open a
+# fence, and a backtick info string containing a backtick is NOT a fence (so a
+# stray inline-code-looking line cannot accidentally open/close a fence).
+info_fence = (
+    "# Docs\n\n"
+    "```python\n"                  # opener with info string
+    + BEGIN + "\nexample with info string\n" + END + "\n"
+    "```\n\n"
+    "TEAM RULE KEEP ME\n\n"
+    + BEGIN + "\nOLD\n" + END + "\n"
+)
+res, final, _ = run(info_fence)
+check("fence opener with info string still hides inner markers",
+      "example with info string" in final and "MANAGED v2" in final
+      and "TEAM RULE KEEP ME" in final,
+      repr(final))
+
+# 2g. Indentation: a fence may be indented up to 3 spaces; 4+ spaces is an
+# indented code block, not a fence. A marker that is only "hidden" behind a
+# 4-space-indented pseudo-fence is therefore NOT in a fence — but it also is not
+# a whole-line marker once indented? It IS (we strip), so guard the real case:
+# a 3-space-indented fence still hides its markers.
+indented_fence = (
+    "# Docs\n\n"
+    "   ```\n"                      # 3-space indent: valid fence
+    + BEGIN + "\nindented example\n" + END + "\n"
+    "   ```\n\n"
+    "TEAM RULE KEEP ME\n\n"
+    + BEGIN + "\nOLD\n" + END + "\n"
+)
+res, final, _ = run(indented_fence)
+check("3-space-indented fence hides inner markers",
+      "indented example" in final and "MANAGED v2" in final
+      and "TEAM RULE KEEP ME" in final,
+      repr(final))
+
 # 3. P1: orphan begin (no end) must REFUSE, not append.
 orphan = "# CLAUDE\n\n" + BEGIN + "\nrule beta KEEP ME\n"
 res, final, _ = run(orphan)
@@ -131,6 +233,24 @@ res, final, _ = run(crlf)
 check("CRLF preserved (no LF splice)",
       res == "updated" and "\r\n" in final and "\n\n" not in final.replace("\r\n", "") and "pre" in final and "post" in final,
       repr(final))
+
+# 12. CLI `--` end-of-options: a target path that starts with '--' is accepted
+# after a lone `--` separator (argv boundary handling), and `--create` before
+# `--` is still honored.
+d = tempfile.mkdtemp()
+blk = os.path.join(d, "BLOCK.md")
+with io.open(blk, "w", encoding="utf-8", newline="") as f:
+    f.write(BLOCK_BODY)
+weird = os.path.join(d, "--weird.md")  # basename starts with --
+rc = m.main(["prog", "--create", "--", weird, blk])
+with io.open(weird, encoding="utf-8", newline="") as f:
+    weird_out = f.read()
+check("CLI accepts -- separator + --create for a --prefixed path",
+      rc == 0 and "MANAGED v2" in weird_out, "rc=%r out=%r" % (rc, weird_out))
+
+# 13. CLI rejects an unknown --option (no silent arg drop).
+rc = m.main(["prog", "--bogus", "a", "b"])
+check("CLI rejects unknown option", rc == 2, "rc=%r" % rc)
 
 print("\n%d passed, %d failed" % (passed, failed))
 sys.exit(1 if failed else 0)

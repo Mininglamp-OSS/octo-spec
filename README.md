@@ -82,7 +82,10 @@ Finish    → a final check runs, then new learnings are promoted back into rule
 ## Quick start
 
 ```bash
-# 1. In a business repo, initialize the .octospec/ skeleton
+# 1. In a business repo, initialize the .octospec/ skeleton. The template ships
+#    its own scripts/ (octospec-sync.sh + octospec_sync_block.py), so the copied
+#    .octospec/ is self-contained — no path back into the octo-spec checkout is
+#    needed to run the sync.
 cp -r <path-to>/octo-spec/templates/octospec-init .octospec
 
 # 2. Pin the global version in .octospec/manifest.yaml, then sync. Point
@@ -92,8 +95,16 @@ GLOBAL_SRC=/path/to/octo-spec ./.octospec/scripts/octospec-sync.sh
 #    writes the octospec agent-instruction block into your agent files
 #    (CLAUDE.md / AGENTS.md / GEMINI.md / QWEN.md), between managed markers.
 #    Re-run any time you bump the pin; it is idempotent and preserves anything
-#    outside the markers.
+#    outside the markers — including the file's original line endings (LF/CRLF)
+#    and trailing newline.
 ```
+
+> The scripts vendored under `.octospec/scripts/` are byte-for-byte copies of the
+> canonical `scripts/octospec-sync.sh` and `scripts/octospec_sync_block.py` in
+> this repo; CI (`scripts/test_octospec_sync_sh.sh`) asserts they stay identical,
+> so the copy can never silently drift from the tested source. To upgrade the
+> tooling itself, re-copy the template `scripts/` (or just the two files) from a
+> newer octo-spec checkout.
 
 See [`docs/CLAUDE-WORKFLOW.md`](docs/CLAUDE-WORKFLOW.md) for the Claude Code slash
 command workflow.
