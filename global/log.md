@@ -5,6 +5,14 @@ Change history for the global ("constitution") rules, following the
 change-log convention (§7). Newest entries first. Each entry records
 Creation / Update / Deprecation of a knowledge unit.
 
+## 2026-06-22
+
+- **Creation** — Added `BOOTSTRAP.md` one-liner onboarding entry (remote-doc
+  driven: clone the pinned octo-spec to a temp dir, then hand off to the
+  `octospec-init` skill against the current repo) and surfaced it at the top of
+  both `README.md` and `README.zh-CN.md` Quick start. Bumped `VERSION` to
+  `1.2.0`; the bootstrap clone tag and README raw URLs are pinned to `v1.2.0`.
+
 ## 2026-06-19
 
 - **Fix** — Corrected `scripts/octospec_sync_block.py` fence detection to follow

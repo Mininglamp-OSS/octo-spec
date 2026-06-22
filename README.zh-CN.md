@@ -53,6 +53,12 @@ octo-spec 是 **git 原生(git-native)** 且 **Claude Code 优先(Claude Code fi
 
 ## 快速开始
 
+**最快路径(零 shell):把下面这句话粘给你的编码 agent**(Claude Code / Codex / OpenClaw):
+
+> 读取 https://raw.githubusercontent.com/Mininglamp-OSS/octo-spec/v1.2.0/BOOTSTRAP.md 并按它把 octo-spec 接入这个仓库。
+
+它会克隆钉死版本的 octo-spec,再帮你跑标准的 octospec-init 接入。下面的手动步骤仍是 source of truth。
+
 > 用 Claude Code? **octospec-init** skill 会带 agent 走完这套接入(拷贝 → 钉版本 → sync → 校验)。下面是同一件事的手动版。
 
 ```bash
