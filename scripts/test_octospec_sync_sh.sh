@@ -21,7 +21,7 @@ tmp="$(mktemp -d)"; TMP_DIRS+=("$tmp")
 cd "$tmp"
 git init -q
 mkdir -p .octospec
-printf 'inherits: octo-spec@1.1.0\n' > .octospec/manifest.yaml
+printf 'inherits: octo-spec@1.2.0\n' > .octospec/manifest.yaml
 printf '# CLAUDE\n\nteam rule\n' > CLAUDE.md
 # orphan begin marker -> the python helper must REFUSE this file
 printf '# AGENTS\n\n<!-- octospec:begin -->\nrule beta KEEP ME\n' > AGENTS.md
@@ -65,7 +65,7 @@ tmp2="$(mktemp -d)"; TMP_DIRS+=("$tmp2")
 cd "$tmp2"
 git init -q
 mkdir -p .octospec
-printf 'inherits: octo-spec@1.1.0\n' > .octospec/manifest.yaml
+printf 'inherits: octo-spec@1.2.0\n' > .octospec/manifest.yaml
 printf '# CLAUDE\n\nteam rule keep me\n' > CLAUDE.md
 # Intentionally NO AGENTS.md / GEMINI.md / QWEN.md.
 
@@ -172,5 +172,154 @@ if [ "$fail" -eq 0 ]; then
   echo "quickstart end-to-end test: PASS"
 else
   echo "quickstart end-to-end test: FAIL"
+fi
+
+# ---------------------------------------------------------------------------
+# Version assertion (YUJ-5344): the manifest pin (inherits: octo-spec@X) must
+# match the GLOBAL_SRC checkout's VERSION, asserted BEFORE any vendoring so a
+# stale pin never silently ships the wrong global rules. GLOBAL_SRC=$REPO has
+# VERSION=1.2.0, so the fixtures pin 1.2.0 on the happy path.
+
+# [api] 1) pin == VERSION -> exit 0, block synced, and re-running is idempotent.
+tmp4="$(mktemp -d)"; TMP_DIRS+=("$tmp4")
+cd "$tmp4"
+git init -q
+mkdir -p .octospec
+printf 'inherits: octo-spec@1.2.0\n' > .octospec/manifest.yaml
+printf '# CLAUDE\n\nteam rule\n' > CLAUDE.md
+
+set +e
+GLOBAL_SRC="$REPO" bash "$REPO/scripts/octospec-sync.sh" > out.log 2>&1
+code4=$?
+set -e
+
+if [ "$code4" -eq 0 ]; then
+  note ok "version-match sync exits 0 (pin 1.2.0 == VERSION 1.2.0)"
+else
+  note FAIL "version-match sync exited $code4"; fail=1
+  cat out.log
+fi
+
+if grep -q "octospec:begin" CLAUDE.md; then
+  note ok "version-match sync wrote the octospec block"
+else
+  note FAIL "version-match sync did not write the octospec block"; fail=1
+fi
+
+first="$(cat CLAUDE.md)"
+set +e
+GLOBAL_SRC="$REPO" bash "$REPO/scripts/octospec-sync.sh" > out.log 2>&1
+code4b=$?
+set -e
+if [ "$code4b" -eq 0 ] && [ "$first" = "$(cat CLAUDE.md)" ]; then
+  note ok "version-match sync is idempotent (second run unchanged)"
+else
+  note FAIL "version-match sync not idempotent (code=$code4b)"; fail=1
+fi
+
+cd "$REPO"
+
+# [api] 2) pin != VERSION -> non-zero, VERSION MISMATCH, NOTHING vendored/rewritten.
+tmp5="$(mktemp -d)"; TMP_DIRS+=("$tmp5")
+cd "$tmp5"
+git init -q
+mkdir -p .octospec
+printf 'inherits: octo-spec@9.9.9\n' > .octospec/manifest.yaml
+printf '# CLAUDE\n\noriginal team rule\n' > CLAUDE.md
+
+set +e
+out5="$(GLOBAL_SRC="$REPO" bash "$REPO/scripts/octospec-sync.sh" 2>&1)"
+code5=$?
+set -e
+
+if [ "$code5" -ne 0 ]; then
+  note ok "version-mismatch sync exits non-zero (code=$code5)"
+else
+  note FAIL "version-mismatch sync exited 0"; fail=1
+fi
+
+if printf '%s' "$out5" | grep -q "VERSION MISMATCH"; then
+  note ok "version-mismatch stderr contains VERSION MISMATCH"
+else
+  note FAIL "version-mismatch stderr missing VERSION MISMATCH"; fail=1
+  printf '%s\n' "$out5"
+fi
+
+if [ ! -e .octospec/_global ]; then
+  note ok "version-mismatch aborted before vendoring (_global not created)"
+else
+  note FAIL "version-mismatch vendored _global despite mismatch"; fail=1
+fi
+
+if [ "$(cat CLAUDE.md)" = "$(printf '# CLAUDE\n\noriginal team rule\n')" ]; then
+  note ok "version-mismatch left CLAUDE.md untouched (no rewrite before assert)"
+else
+  note FAIL "version-mismatch rewrote CLAUDE.md before asserting"; fail=1
+fi
+
+cd "$REPO"
+
+# [api] 3) escape hatch: pin != VERSION + OCTOSPEC_SKIP_VERSION_CHECK=1 -> exit 0.
+tmp6="$(mktemp -d)"; TMP_DIRS+=("$tmp6")
+cd "$tmp6"
+git init -q
+mkdir -p .octospec
+printf 'inherits: octo-spec@9.9.9\n' > .octospec/manifest.yaml
+printf '# CLAUDE\n\nteam rule\n' > CLAUDE.md
+
+set +e
+OCTOSPEC_SKIP_VERSION_CHECK=1 GLOBAL_SRC="$REPO" bash "$REPO/scripts/octospec-sync.sh" > out.log 2>&1
+code6=$?
+set -e
+
+if [ "$code6" -eq 0 ]; then
+  note ok "escape hatch (SKIP_VERSION_CHECK=1) bypasses mismatch, exits 0"
+else
+  note FAIL "escape hatch did not bypass mismatch (code=$code6)"; fail=1
+  cat out.log
+fi
+
+if grep -q "octospec:begin" CLAUDE.md; then
+  note ok "escape hatch still vendors + syncs the block"
+else
+  note FAIL "escape hatch did not sync the block"; fail=1
+fi
+
+cd "$REPO"
+
+# [api] 4) boundary: GLOBAL_SRC without a VERSION file -> non-zero, "no VERSION file".
+tmp7="$(mktemp -d)"; TMP_DIRS+=("$tmp7")
+nover="$(mktemp -d)"; TMP_DIRS+=("$nover")   # GLOBAL_SRC dir with NO VERSION file
+mkdir -p "$nover/global"
+cd "$tmp7"
+git init -q
+mkdir -p .octospec
+printf 'inherits: octo-spec@1.2.0\n' > .octospec/manifest.yaml
+printf '# CLAUDE\n\nteam rule\n' > CLAUDE.md
+
+set +e
+out7="$(GLOBAL_SRC="$nover" bash "$REPO/scripts/octospec-sync.sh" 2>&1)"
+code7=$?
+set -e
+
+if [ "$code7" -ne 0 ]; then
+  note ok "missing-VERSION-file sync exits non-zero (code=$code7)"
+else
+  note FAIL "missing-VERSION-file sync exited 0"; fail=1
+fi
+
+if printf '%s' "$out7" | grep -q "no VERSION file"; then
+  note ok "missing-VERSION-file stderr contains 'no VERSION file'"
+else
+  note FAIL "missing-VERSION-file stderr missing 'no VERSION file'"; fail=1
+  printf '%s\n' "$out7"
+fi
+
+cd "$REPO"
+
+if [ "$fail" -eq 0 ]; then
+  echo "version-assertion test: PASS"
+else
+  echo "version-assertion test: FAIL"
 fi
 exit "$fail"
