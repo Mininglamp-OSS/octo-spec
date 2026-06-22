@@ -55,6 +55,12 @@ come with it — reviewable, versioned, and improvable like any other code artif
 
 ## Quick start
 
+**Fastest path (zero shell): paste this one line to your coding agent** (Claude Code / Codex / OpenClaw):
+
+> Read https://raw.githubusercontent.com/Mininglamp-OSS/octo-spec/v1.2.0/BOOTSTRAP.md and follow it to onboard octo-spec into this repo.
+
+It clones the pinned octo-spec, then runs the standard `octospec-init` onboarding for you. The manual steps below remain the source of truth.
+
 > Using Claude Code? The **`octospec-init`** skill walks an agent through this
 > exact onboarding for you (copy → pin → sync → verify → lint). The manual steps
 > below are the same thing by hand, and remain the source of truth.
