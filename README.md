@@ -63,10 +63,14 @@ come with it — reviewable, versioned, and improvable like any other code artif
 # 1. Initialize the .octospec/ skeleton (the template ships its own sync scripts).
 cp -r <path-to>/octo-spec/templates/octospec-init .octospec
 
-# 2. Pin the global version in .octospec/manifest.yaml, then sync (point GLOBAL_SRC at an octo-spec checkout of that version).
-GLOBAL_SRC=/path/to/octo-spec ./.octospec/scripts/octospec-sync.sh
+# 2. Pin the global version in .octospec/manifest.yaml, then point GLOBAL_SRC at an
+#    octo-spec checkout of that version. Export it so steps 3 and 4 both see it.
+export GLOBAL_SRC=/path/to/octo-spec
 
-# 3. Self-check: run the OKF lint (not vendored — run it from the checkout).
+# 3. Sync the global rules into .octospec/.
+./.octospec/scripts/octospec-sync.sh
+
+# 4. Self-check: run the OKF lint (not vendored — run it from the checkout).
 "$GLOBAL_SRC/scripts/octospec-lint.sh" .
 ```
 

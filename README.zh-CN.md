@@ -59,10 +59,14 @@ octo-spec 是 **git 原生(git-native)** 且 **Claude Code 优先(Claude Code fi
 # 1. 初始化 .octospec/ 骨架(模板自带 sync 脚本)
 cp -r <path-to>/octo-spec/templates/octospec-init .octospec
 
-# 2. 钉好 .octospec/manifest.yaml 里的全局版本后,sync(GLOBAL_SRC 指向该版本的 octo-spec checkout)
-GLOBAL_SRC=/path/to/octo-spec ./.octospec/scripts/octospec-sync.sh
+# 2. 钉好 .octospec/manifest.yaml 里的全局版本后,把 GLOBAL_SRC 指向该版本的
+#    octo-spec checkout。用 export,让第 3、4 步都能读到它。
+export GLOBAL_SRC=/path/to/octo-spec
 
-# 3. 自检:跑 OKF lint(lint 脚本不 vendor,从 checkout 跑)
+# 3. 把全局规则 sync 进 .octospec/。
+./.octospec/scripts/octospec-sync.sh
+
+# 4. 自检:跑 OKF lint(lint 脚本不 vendor,从 checkout 跑)
 "$GLOBAL_SRC/scripts/octospec-lint.sh" .
 ```
 
