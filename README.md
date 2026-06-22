@@ -4,6 +4,46 @@
 
 **An out-of-the-box engineering standard for AI-assisted coding.**
 
+**Without octo-spec:** every new AI session you re-explain your conventions —
+commit style, error handling, which rules this change touches — and the agent
+still drifts.
+
+**With octo-spec:** the standards live in the repo. `git pull` brings them, and
+any coding agent reads and follows them automatically — no re-explaining.
+
+```mermaid
+flowchart TD
+    subgraph SOT["Source of truth (in the repo)"]
+        R[".octospec/rules/<br/>team conventions"]
+        G[".octospec/_global/<br/>org-wide rules (synced, git-ignored)"]
+    end
+
+    subgraph Pointers["Entry-point pointers (just signposts)"]
+        C["CLAUDE.md"]
+        A["AGENTS.md"]
+        CMD[".claude/commands/<br/>slash commands"]
+    end
+
+    subgraph Agents["Whoever does the work"]
+        CC["Claude Code"]
+        CX["Codex"]
+        OC["OpenClaw"]
+    end
+
+    R --> C & A
+    G --> R
+    C --> CC
+    CMD --> CC
+    A --> CX
+    A --> OC
+    OC -.spawns.-> CC
+    OC -.spawns.-> CX
+
+    CC & CX & OC --> OUT["Code that follows<br/>the same rules"]
+```
+
+**One source of truth (`.octospec/`), many entry points.**
+
 AI writes code fast, but every session it starts from scratch — no memory of your
 project, your conventions, or your team's requirements. octo-spec persists specs,
 tasks, and project memory **into your repository**, so any coding agent works to
@@ -13,30 +53,29 @@ octo-spec is **git-native** and **Claude Code first**: there is no central serve
 to run and no extra service to install. Clone the repo, and the shared standards
 come with it — reviewable, versioned, and improvable like any other code artifact.
 
-## Built on an open format (OKF)
+## Quick start
 
-octo-spec stores its rules, tasks, and journals as plain Markdown with YAML
-frontmatter, compatible with the [Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
-v0.1 — an open, Apache-2.0 knowledge format from Google Cloud's Knowledge Catalog.
+> Using Claude Code? The **`octospec-init`** skill walks an agent through this
+> exact onboarding for you (copy → pin → sync → verify → lint). The manual steps
+> below are the same thing by hand, and remain the source of truth.
 
-This is a deliberate choice: knowledge is best represented in commonly accessible,
-established formats that are readable by humans without tooling, parseable by
-agents without bespoke SDKs, diffable in version control, and portable across
-tools and organizations. By aligning with OKF, an `.octospec/` directory is a
-valid OKF knowledge bundle — any OKF-aware tool or agent can read it — while
-octospec adds its own workflow layer (on-demand rule injection, the 4-phase loop,
-and review gates) on top as permitted OKF extension fields.
+```bash
+# 1. Initialize the .octospec/ skeleton (the template ships its own sync scripts).
+cp -r <path-to>/octo-spec/templates/octospec-init .octospec
 
-## Two layers
+# 2. Pin the global version in .octospec/manifest.yaml, then point GLOBAL_SRC at an
+#    octo-spec checkout of that version. Export it so steps 3 and 4 both see it.
+export GLOBAL_SRC=/path/to/octo-spec
 
-octo-spec is split into two layers so shared standards and per-repo specifics
-never fight each other:
+# 3. Sync the global rules into .octospec/.
+./.octospec/scripts/octospec-sync.sh
 
-- **Global ("constitution")** — this repository. Cross-repo conventions every
-  project should follow: commit style, PR rules, review standards, security
-  red lines, comprehension gate.
-- **Per-repo ("local law")** — a `.octospec/` directory inside each business repo.
-  Repo-specific rules that inherit from the global layer via a pinned version.
+# 4. Self-check: run the OKF lint (not vendored — run it from the checkout).
+"$GLOBAL_SRC/scripts/octospec-lint.sh" .
+```
+
+See [`docs/CLAUDE-WORKFLOW.md`](docs/CLAUDE-WORKFLOW.md) for the Claude Code slash
+command workflow.
 
 ## Core ideas
 
@@ -62,6 +101,31 @@ Verify    → diff is checked against rules + lint/type-check/tests, self-fixing
 Finish    → a final check runs, then new learnings are promoted back into rules/
 ```
 
+## Two layers
+
+octo-spec is split into two layers so shared standards and per-repo specifics
+never fight each other:
+
+- **Global ("constitution")** — this repository. Cross-repo conventions every
+  project should follow: commit style, PR rules, review standards, security
+  red lines, comprehension gate.
+- **Per-repo ("local law")** — a `.octospec/` directory inside each business repo.
+  Repo-specific rules that inherit from the global layer via a pinned version.
+
+## Built on an open format (OKF)
+
+octo-spec stores its rules, tasks, and journals as plain Markdown with YAML
+frontmatter, compatible with the [Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
+v0.1 — an open, Apache-2.0 knowledge format from Google Cloud's Knowledge Catalog.
+
+This is a deliberate choice: knowledge is best represented in commonly accessible,
+established formats that are readable by humans without tooling, parseable by
+agents without bespoke SDKs, diffable in version control, and portable across
+tools and organizations. By aligning with OKF, an `.octospec/` directory is a
+valid OKF knowledge bundle — any OKF-aware tool or agent can read it — while
+octospec adds its own workflow layer (on-demand rule injection, the 4-phase loop,
+and review gates) on top as permitted OKF extension fields.
+
 ## Directory layout (per-repo `.octospec/`)
 
 ```
@@ -81,47 +145,6 @@ Finish    → a final check runs, then new learnings are promoted back into rule
 > `~/.octospec/journal/<repo>/<user>/` (machine-local) to avoid leaking private
 > notes into the repository or pull requests.
 
-## Quick start
-
-> Using Claude Code? The **`octospec-init`** skill walks an agent through this
-> exact onboarding for you (copy → pin → sync → verify → lint). The manual steps
-> below are the same thing by hand, and remain the source of truth.
-
-```bash
-# 1. In a business repo, initialize the .octospec/ skeleton. The template ships
-#    its own scripts/ (octospec-sync.sh + octospec_sync_block.py), so the copied
-#    .octospec/ carries the sync scripts themselves — you don't need a path back
-#    into the octo-spec checkout just to locate the scripts. (The global rules are
-#    still sourced from an octo-spec checkout at sync time; see GLOBAL_SRC below.)
-cp -r <path-to>/octo-spec/templates/octospec-init .octospec
-
-# 2. Pin the global version in .octospec/manifest.yaml, then sync. Point
-#    GLOBAL_SRC at a checkout of octo-spec at that pinned version.
-GLOBAL_SRC=/path/to/octo-spec ./.octospec/scripts/octospec-sync.sh
-#    This vendors the global rules into git-ignored .octospec/_global/ AND
-#    writes the octospec agent-instruction block into your agent files
-#    (CLAUDE.md / AGENTS.md / GEMINI.md / QWEN.md), between managed markers.
-#    Re-run any time you bump the pin; it is idempotent and preserves anything
-#    outside the markers — including the file's original line endings (LF/CRLF)
-#    and trailing newline.
-```
-
-> The scripts vendored under `.octospec/scripts/` are byte-for-byte copies of the
-> canonical `scripts/octospec-sync.sh` and `scripts/octospec_sync_block.py` in
-> this repo; CI (`scripts/test_octospec_sync_sh.sh`) asserts they stay identical,
-> so the copy can never silently drift from the tested source. To upgrade the
-> tooling itself, re-copy the template `scripts/` (or just the two files) from a
-> newer octo-spec checkout.
-
-See [`docs/CLAUDE-WORKFLOW.md`](docs/CLAUDE-WORKFLOW.md) for the Claude Code slash
-command workflow.
-
-## Docs
-
-- [Getting started](docs/GETTING-STARTED.md) — 5-minute guide + usage examples + diagrams
-- [Claude Code workflow](docs/CLAUDE-WORKFLOW.md) — slash commands + zero-install model
-- [Integration architecture](docs/INTEGRATION.md) — how every entry point (Claude Code, Codex, Octo bots, dispatch) picks up the standard
-
 ## OKF conformance
 
 The knowledge files (the global rule files, any repo `rules/*.md`, and per-task
@@ -140,6 +163,24 @@ locally with:
 A human-readable rule catalog lives in [`global/index.md`](global/index.md), and
 the change history in [`global/log.md`](global/log.md).
 
+## Docs
+
+- [Getting started](docs/GETTING-STARTED.md) — 5-minute guide + usage examples + diagrams
+- [Claude Code workflow](docs/CLAUDE-WORKFLOW.md) — slash commands + zero-install model
+- [Integration architecture](docs/INTEGRATION.md) — how every entry point (Claude Code, Codex, Octo bots, dispatch) picks up the standard
+
 ## License
 
 octo-spec is licensed under the **Apache License 2.0**. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+## Notes
+
+<details>
+<summary>Sync mechanics & caveats</summary>
+
+- The template ships its own `scripts/` (`octospec-sync.sh` + `octospec_sync_block.py`), so the copied `.octospec/` carries the sync scripts themselves — you don't need a path back into the octo-spec checkout just to locate the scripts. The global rules are still sourced from an octo-spec checkout at sync time (see `GLOBAL_SRC`).
+- Sync vendors the global rules into git-ignored `.octospec/_global/` AND writes the octospec agent-instruction block into your agent files (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` / `QWEN.md`), between managed markers.
+- Re-run any time you bump the pin; it is idempotent and preserves anything outside the markers — including the file's original line endings (LF/CRLF) and trailing newline.
+- The scripts vendored under `.octospec/scripts/` are byte-for-byte copies of the canonical `scripts/octospec-sync.sh` and `scripts/octospec_sync_block.py` in this repo; CI (`scripts/test_octospec_sync_sh.sh`) asserts they stay identical, so the copy can never silently drift from the tested source. To upgrade the tooling itself, re-copy the template `scripts/` (or just the two files) from a newer octo-spec checkout.
+
+</details>
