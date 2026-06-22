@@ -89,15 +89,21 @@ present.
 
 ### 5. Self-check with lint
 
-Run the OKF conformance lint from the repo root:
+Run the OKF conformance lint once, from the repo root of the target repo, using
+the lint script in your octo-spec checkout (the same `GLOBAL_SRC` you synced from
+in step 3). Unlike `octospec-sync.sh`, the lint script is **not** vendored into
+`.octospec/scripts/` — it is a one-time onboarding self-check, so it is run from
+the octo-spec checkout rather than copied into every repo.
 
 ```bash
-./scripts/octospec-lint.sh .
+GLOBAL_SRC=/path/to/octo-spec   # the checkout you synced from in step 3
+"$GLOBAL_SRC/scripts/octospec-lint.sh" .
 ```
 
-Exit 0 means the knowledge units conform. (Lint only checks OKF knowledge units
-under `global/`, `*/rules/`, `tasks/`, and `journal/`; it does not inspect skill
-files, so this skill itself is out of scope.)
+Exit 0 means the knowledge units conform. The linter recurses from `.`, so it
+picks up this repo's `.octospec/rules/` (it scans OKF knowledge units under
+`global/`, `*/rules/`, `tasks/`, and `journal/`; it does not inspect skill files,
+so this skill itself is out of scope).
 
 ## After onboarding
 
