@@ -83,6 +83,10 @@ Finish    → a final check runs, then new learnings are promoted back into rule
 
 ## Quick start
 
+> Using Claude Code? The **`octospec-init`** skill walks an agent through this
+> exact onboarding for you (copy → pin → sync → verify → lint). The manual steps
+> below are the same thing by hand, and remain the source of truth.
+
 ```bash
 # 1. In a business repo, initialize the .octospec/ skeleton. The template ships
 #    its own scripts/ (octospec-sync.sh + octospec_sync_block.py), so the copied

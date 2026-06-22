@@ -77,6 +77,10 @@ Finish    → 运行一次最终检查,然后把新的学习成果提炼回 rule
 
 ## 快速开始
 
+> 用 Claude Code?**`octospec-init`** skill 会带 agent 走完下面这套接入流程
+> (拷贝 → 钉版本 → sync → 校验 → lint)。下面的手工步骤是同一件事的手动版,
+> 仍然是规范来源。
+
 ```bash
 # 1. 在一个业务仓库里,初始化 .octospec/ 骨架。模板自带它自己的 scripts/
 #    (octospec-sync.sh + octospec_sync_block.py),所以被复制出来的
