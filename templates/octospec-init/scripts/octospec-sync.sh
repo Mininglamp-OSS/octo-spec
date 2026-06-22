@@ -43,6 +43,39 @@ if [ -z "$GLOBAL_SRC" ]; then
   exit 1
 fi
 
+# --- Version assertion: manifest pin must match the GLOBAL_SRC checkout. (YUJ-5344)
+# Re-sync drift guard: bumping the pin without checking out the matching tag would
+# silently vendor the wrong version's global rules. fail-fast like the GLOBAL_SRC
+# unset path above. Escape hatch for deliberate cross-version debugging only.
+if [ "${OCTOSPEC_SKIP_VERSION_CHECK:-0}" != "1" ]; then
+  # Version = part after '@', tolerating a trailing inline comment / whitespace.
+  PIN_VER="$(printf '%s' "${PIN##*@}" | sed -E 's/[[:space:]]*#.*$//; s/^[[:space:]]+//; s/[[:space:]]+$//')"
+  SRC_VERSION_FILE="$GLOBAL_SRC/VERSION"
+  if [ ! -f "$SRC_VERSION_FILE" ]; then
+    echo "octospec: cannot verify version — no VERSION file at $SRC_VERSION_FILE" >&2
+    echo "octospec: 无法校验版本 — $SRC_VERSION_FILE 不存在，GLOBAL_SRC 不像 octo-spec checkout，已中止。" >&2
+    echo "  (set OCTOSPEC_SKIP_VERSION_CHECK=1 to bypass — debug only)" >&2
+    exit 1
+  fi
+  SRC_VER="$(tr -d '[:space:]' < "$SRC_VERSION_FILE")"
+  if [ -z "$SRC_VER" ]; then
+    echo "octospec: cannot verify version — $SRC_VERSION_FILE is empty; aborting." >&2
+    echo "octospec: 无法校验版本 — $SRC_VERSION_FILE 为空，已中止。" >&2
+    echo "  (set OCTOSPEC_SKIP_VERSION_CHECK=1 to bypass — debug only)" >&2
+    exit 1
+  fi
+  if [ "$PIN_VER" != "$SRC_VER" ]; then
+    echo "octospec: VERSION MISMATCH — manifest pins octo-spec@$PIN_VER but GLOBAL_SRC checkout is $SRC_VER" >&2
+    echo "octospec: 版本不一致 — manifest 钉 octo-spec@$PIN_VER，但 GLOBAL_SRC checkout 是 $SRC_VER" >&2
+    echo "  Fix one of / 二选一修复:" >&2
+    echo "    - check out octo-spec at the pinned tag:  git -C \"\$GLOBAL_SRC\" checkout v$PIN_VER" >&2
+    echo "    - or change the manifest pin back to:     inherits: octo-spec@$SRC_VER" >&2
+    echo "  (set OCTOSPEC_SKIP_VERSION_CHECK=1 to bypass — debug only)" >&2
+    exit 1
+  fi
+  echo "octospec: version OK (pin $PIN_VER == checkout $SRC_VER)"
+fi
+
 # 1) Vendor the global rules.
 rm -rf "$GLOBAL_CACHE"
 mkdir -p "$GLOBAL_CACHE"
