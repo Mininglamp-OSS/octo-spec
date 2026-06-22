@@ -1,5 +1,7 @@
 # octo-spec
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 **An out-of-the-box engineering standard for AI-assisted coding.**
 
 AI writes code fast, but every session it starts from scratch — no memory of your
@@ -136,4 +138,4 @@ the change history in [`global/log.md`](global/log.md).
 
 ## License
 
-See [LICENSE](LICENSE).
+octo-spec is licensed under the **Apache License 2.0**. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
