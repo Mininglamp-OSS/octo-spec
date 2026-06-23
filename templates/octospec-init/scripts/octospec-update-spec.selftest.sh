@@ -225,6 +225,40 @@ rm -f "$NL_DRAFT"
 # section 5's --opt=--value escape-hatch check wrote actor 't' / slug 'ok-slug'.
 find "$BY_ACTOR" -name 'ok-slug.md' -delete 2>/dev/null || true
 
+echo "== 9. actor hash fallback works without GNU sha1sum (macOS/BSD) =="
+# The empty-normalization branch hashes the actor name. sha1sum is GNU-only; on a
+# default macOS PATH only `shasum` exists. Run the script under a stub PATH that
+# exposes shasum but NOT sha1sum and assert a CJK actor still gets a non-empty,
+# unique lane (on Linux the ambient GNU sha1sum would otherwise mask this break).
+STUB_BIN="$FIXTURE_ROOT/stub-bin"
+mkdir -p "$STUB_BIN"
+for b in shasum git tr head awk sed dirname basename mkdir mv cat date rm grep \
+         env bash sh printf find sort comm wc; do
+  p="$(command -v "$b" 2>/dev/null)" && ln -sf "$p" "$STUB_BIN/$b"
+done
+check "stub PATH really hides sha1sum" \
+  sh -c "! PATH=\"\$1\" command -v sha1sum >/dev/null 2>&1" _ "$STUB_BIN"
+NOSHA_OUT="$(PATH="$STUB_BIN" "$SCRIPT" --slug selftest-nosha --kind task \
+  --actor '李雷' --learning 'no-sha1sum lei' 2>/dev/null)"
+NOSHA_LANE="$(printf '%s' "$NOSHA_OUT" | sed -n '1p')"
+check "CJK actor gets a journal even without sha1sum" \
+  test -f "$OCTOSPEC_DIR/../$NOSHA_LANE"
+check "fallback lane is a non-empty actor-XXXXXXXX (not bare 'actor-')" \
+  sh -c "printf '%s' \"\$1\" | grep -qE '/by-actor/actor-[0-9a-f]{8}/selftest-nosha\\.md$'" _ "$NOSHA_LANE"
+find "$BY_ACTOR" -name 'selftest-nosha.md' -delete 2>/dev/null || true
+
+echo "== 10. --rule-id must be kebab-case (no YAML-breaking chars) =="
+check "rule-id with ':' refused" refuses --slug ok-slug --kind rule --rule-id 'bad:id' --learning x
+check "rule-id with '/' refused"  refuses --slug ok-slug --kind rule --rule-id 'a/b' --learning x
+check "rule-id starting non-letter refused" refuses --slug ok-slug --kind rule --rule-id '1abc' --learning x
+# a clean kebab-case rule-id is accepted and lands as the id: scalar.
+"$SCRIPT" --slug selftest-rid --kind rule --no-promote --rule-id 'custom-rule-id' \
+  --learning 'rid body' >/dev/null
+RID_DRAFT="$PENDING/selftest-rid-rule-draft.md"
+check "valid --rule-id accepted" test -f "$RID_DRAFT"
+check "valid --rule-id written as id: scalar" grep -q '^id: custom-rule-id$' "$RID_DRAFT"
+rm -f "$RID_DRAFT"
+
 echo
 echo "RESULT: $pass passed, $fail failed"
 test "$fail" -eq 0

@@ -237,6 +237,16 @@ atomic_write() {
 # ============================================================================
 if [ "$KIND" = "rule" ]; then
   [ -n "$RULE_ID" ] || RULE_ID="$SLUG"
+  # RULE_ID becomes the YAML `id:` scalar and the rules/<id>.md filename, so hold
+  # it to the same kebab-case shape as --slug. A raw value with `:` or `/` would
+  # emit malformed frontmatter / a bad path; reject it rather than escape it.
+  case "$RULE_ID" in
+    [a-z]*) :;;
+    *) die "--rule-id must be kebab-case, start with a letter: $RULE_ID";;
+  esac
+  case "$RULE_ID" in
+    *[!a-z0-9-]*) die "--rule-id must match [a-z0-9-]: $RULE_ID";;
+  esac
   if [ -z "$TITLE" ]; then TITLE="$(titlecase_slug "$SLUG")"; fi
   if [ -z "$DESCRIPTION" ]; then DESCRIPTION="$FIRST_LINE"; fi
 
@@ -366,7 +376,16 @@ if [ "$KIND" = "task" ]; then
   # handle from a hash of the ORIGINAL name instead, so 李雷 and 韩梅梅 land in
   # distinct lanes.
   if [ -z "$ACTOR" ]; then
-    actor_hash="$(printf '%s' "$ACTOR_ORIG" | sha1sum | head -c 8)"
+    # Hash the original name. sha1sum is GNU-only (absent on a default macOS
+    # PATH); fall back to BSD/macOS `shasum -a 1`. Without this fallback the
+    # branch would yield an empty hash on macOS and collapse back into the bare
+    # "actor-" collision lane this very code path exists to prevent.
+    if command -v sha1sum >/dev/null 2>&1; then
+      actor_hash="$(printf '%s' "$ACTOR_ORIG" | sha1sum | head -c 8)"
+    else
+      actor_hash="$(printf '%s' "$ACTOR_ORIG" | shasum -a 1 | head -c 8)"
+    fi
+    [ -n "$actor_hash" ] || die "could not hash actor name (no sha1sum/shasum?)"
     ACTOR="actor-$actor_hash"
   fi
   case "$ACTOR" in
