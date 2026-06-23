@@ -22,7 +22,7 @@ You are running the octospec **Finish** phase for task `$ARGUMENTS`.
      OKF frontmatter (`type: Rule`, `title`, `description`, `inject_when`,
      `priority`, `load_bearing`, `tier`, `source`, `timestamp`) and add it to
      `rules/_index.yaml`.
-   The helper `scripts/octospec-update-spec.sh` gives you the raw material for
+   The helper `.octospec/scripts/octospec-update-spec.sh` gives you the raw material for
    this — `--kind=rule` writes a rule draft to `learnings/pending/<slug>-rule-draft.md`
    plus a promotion block (proposed body + COMPREHENSION questions) on stdout;
    `--kind=task` writes a per-actor journal entry. The helper never auto-writes

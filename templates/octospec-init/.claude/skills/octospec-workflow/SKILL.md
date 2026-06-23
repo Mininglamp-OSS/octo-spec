@@ -65,7 +65,7 @@ manually; as a skill you perform the same steps.
   timestamp) and add a dated entry to `.octospec/log.md`.
 - Promote any reusable learning **in this same PR**: edit the relevant
   `.octospec/rules/<rule>.md` in place (or add a new rule + `_index.yaml` entry)
-  — the PR review is the gate. The helper `scripts/octospec-update-spec.sh`
+  — the PR review is the gate. The helper `.octospec/scripts/octospec-update-spec.sh`
   gives you the raw material (`--kind=rule` → a draft in
   `learnings/pending/<slug>-rule-draft.md` + a promotion block on stdout;
   `--kind=task` → a per-actor journal entry). It never auto-writes `rules/`, so
