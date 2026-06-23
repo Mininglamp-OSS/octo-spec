@@ -13,7 +13,6 @@ SCRIPT="$HERE/octospec-update-spec.sh"
 FIXTURE_ROOT="$(mktemp -d)"
 export OCTOSPEC_DIR="$FIXTURE_ROOT/.octospec"
 mkdir -p "$OCTOSPEC_DIR/learnings/pending" "$OCTOSPEC_DIR/journal/by-actor" "$OCTOSPEC_DIR/rules"
-trap 'rm -rf "$FIXTURE_ROOT"' EXIT
 PENDING="$OCTOSPEC_DIR/learnings/pending"
 BY_ACTOR="$OCTOSPEC_DIR/journal/by-actor"
 TEST_ACTOR="selftest-bot"
@@ -45,10 +44,13 @@ cleanup() {
   # default-actor test writes selftest-defactor.md under the git user's lane.
   find "$BY_ACTOR" -name 'selftest-defactor.md' -delete 2>/dev/null || true
 }
-trap cleanup EXIT
+# Single EXIT trap: scrub the test artifacts AND drop the throwaway fixture root,
+# so repeated local runs never leak temp dirs.
+on_exit() { cleanup; rm -rf "$FIXTURE_ROOT"; }
+trap on_exit EXIT
 cleanup
 
-echo "== 1. --kind=rule (draft + promotion issue body) =="
+echo "== 1. --kind=rule (draft + promotion material) =="
 BODY="$("$SCRIPT" --slug selftest-rule --kind rule --load-bearing \
   --inject-touches "space,audit" --priority 88 \
   --learning $'Cross-Space writes must record an audit entry.\nUse audit.Record before returning.')"
@@ -62,11 +64,11 @@ check "--load-bearing -> true" grep -q 'load_bearing: true' "$DRAFT"
 check "--priority honored" grep -q 'priority: 88' "$DRAFT"
 check "inject touches present" grep -q '"audit"' "$DRAFT"
 check "marked draft" grep -q 'status: draft' "$DRAFT"
-check "issue body has COMPREHENSION" contains 'COMPREHENSION' "$BODY"
+check "promotion block has COMPREHENSION" contains 'COMPREHENSION' "$BODY"
 nq="$(printf '%s\n' "$BODY" | grep -cE '^[0-9]+\. \*\*')"
-check "issue body has >=3 questions ($nq)" test "$nq" -ge 3
-check "issue body Linked task" contains 'Linked task' "$BODY"
-check "issue body links draft" contains 'selftest-rule-rule-draft.md' "$BODY"
+check "promotion block has >=3 questions ($nq)" test "$nq" -ge 3
+check "promotion block Linked task" contains 'Linked task' "$BODY"
+check "promotion block links draft" contains 'selftest-rule-rule-draft.md' "$BODY"
 
 echo "== 2. idempotency (rerun must not duplicate) =="
 "$SCRIPT" --slug selftest-rule --kind rule --learning 'second run overwrites' --no-promote >/dev/null
@@ -117,6 +119,61 @@ check "missing --kind refused" refuses --slug ok-slug --learning x
 check "bad --kind refused" refuses --slug ok-slug --kind bogus --learning x
 check "bad slug refused" refuses --slug Bad_Slug --kind task --learning x
 check "empty learning refused" refuses_stdin --slug ok-slug --kind task
+
+echo "== 6. backslash in learning -> valid YAML frontmatter (octospec-lint) =="
+# A learning whose first line carries a regex (\d) and a Windows path (C:\tmp):
+# the default description copies that line into a double-quoted YAML scalar, so a
+# backslash that is not doubled produces malformed YAML and fails octospec-lint.
+BS_LEARNING=$'Match \\d+ digits and the path C:\\tmp\\report before returning.\nKeep the backslashes intact.'
+
+# Locate the linter if it ships alongside the consuming repo's scripts; else fall
+# back to a self-contained YAML parse (the exact check octospec-lint performs).
+LINT=""
+for cand in "$HERE/octospec-lint.py" "$HERE/../../../scripts/octospec-lint.py"; do
+  [ -f "$cand" ] && { LINT="$cand"; break; }
+done
+
+# yaml_ok <file>: succeeds iff the file's --- frontmatter --- block parses as YAML.
+yaml_ok() {
+  python3 - "$1" <<'PY'
+import sys, yaml
+text = open(sys.argv[1], encoding="utf-8").read().replace("\r\n", "\n")
+lines = text.split("\n")
+if not lines or lines[0].strip() != "---":
+    sys.exit("no frontmatter")
+close = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+if close is None:
+    sys.exit("unterminated frontmatter")
+data = yaml.safe_load("\n".join(lines[1:close]))
+sys.exit(0 if isinstance(data, dict) and data.get("type") else "bad frontmatter")
+PY
+}
+
+# rule path: draft frontmatter must be valid YAML despite the backslashes.
+"$SCRIPT" --slug selftest-bs --kind rule --no-promote \
+  --title 'Regex \d guard' --learning "$BS_LEARNING" >/dev/null
+BS_DRAFT="$PENDING/selftest-bs-rule-draft.md"
+check "backslash rule draft created" test -f "$BS_DRAFT"
+check "backslash rule draft is valid YAML frontmatter" yaml_ok "$BS_DRAFT"
+check "backslash preserved in draft body" grep -qF 'C:\tmp\report' "$BS_DRAFT"
+
+# task path: journal lives under journal/by-actor/ which IS in octospec-lint scope.
+"$SCRIPT" --slug selftest-bs --kind task --actor "$TEST_ACTOR" \
+  --learning "$BS_LEARNING" >/dev/null
+BS_JOURNAL="$BY_ACTOR/$TEST_ACTOR/selftest-bs.md"
+check "backslash journal created" test -f "$BS_JOURNAL"
+check "backslash journal is valid YAML frontmatter" yaml_ok "$BS_JOURNAL"
+check "backslash preserved in journal body" grep -qF 'C:\tmp\report' "$BS_JOURNAL"
+if [ -n "$LINT" ]; then
+  # Lint from the fixture root so the relative path keeps its journal/by-actor/
+  # prefix (octospec-lint's knowledge-scope is path-based); the backslash journal
+  # is in scope and must pass.
+  check "octospec-lint passes the backslash journal" \
+    python3 "$LINT" "$OCTOSPEC_DIR"
+else
+  echo "  note: octospec-lint.py not found alongside scripts; used self-contained YAML parse"
+fi
+rm -f "$BS_DRAFT" "$BS_JOURNAL"
 
 echo
 echo "RESULT: $pass passed, $fail failed"

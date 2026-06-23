@@ -66,9 +66,14 @@ manually; as a skill you perform the same steps.
 - Promote any reusable learning **in this same PR**: edit the relevant
   `.octospec/rules/<rule>.md` in place (or add a new rule + `_index.yaml` entry)
   — the PR review is the gate. The helper `scripts/octospec-update-spec.sh`
-  drafts the artifacts. Only use `.octospec/learnings/pending/` for *unresolved*
-  learnings that still need human design before becoming a rule; finished
-  learnings must not be stranded waiting on a phantom separate PR.
+  gives you the raw material (`--kind=rule` → a draft in
+  `learnings/pending/<slug>-rule-draft.md` + a promotion block on stdout;
+  `--kind=task` → a per-actor journal entry). It never auto-writes `rules/`, so
+  **you** copy the draft into `rules/<id>.md` and update `_index.yaml` here, in
+  this PR, then drop the scratch draft — never defer it to a separate PR or a
+  later move. Only use `.octospec/learnings/pending/` for *unresolved* learnings
+  that still need human design before becoming a rule; finished learnings must
+  not be stranded waiting on a phantom separate PR.
 - Open a PR. Fill the PR template's **Linked Spec** (→ the brief) and the
   **COMPREHENSION** three questions to substance, for load-bearing /
   architectural / P0 changes.
