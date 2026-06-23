@@ -63,8 +63,12 @@ manually; as a skill you perform the same steps.
 - Write `.octospec/journal/shared/<slug>.md` (what was done + any learning).
   Start it with OKF frontmatter (`type: Journal` + title/description/tags/
   timestamp) and add a dated entry to `.octospec/log.md`.
-- If a learning is worth reusing, stage it in `.octospec/learnings/pending/`
-  (promotion into `rules/` is a separate reviewed PR — do not auto-edit rules).
+- Promote any reusable learning **in this same PR**: edit the relevant
+  `.octospec/rules/<rule>.md` in place (or add a new rule + `_index.yaml` entry)
+  — the PR review is the gate. The helper `scripts/octospec-update-spec.sh`
+  drafts the artifacts. Only use `.octospec/learnings/pending/` for *unresolved*
+  learnings that still need human design before becoming a rule; finished
+  learnings must not be stranded waiting on a phantom separate PR.
 - Open a PR. Fill the PR template's **Linked Spec** (→ the brief) and the
   **COMPREHENSION** three questions to substance, for load-bearing /
   architectural / P0 changes.
