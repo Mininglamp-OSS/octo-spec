@@ -105,6 +105,7 @@ Plan      → write a brief; AI may draft it from existing code, you confirm
 Implement → AI writes code with the relevant rules auto-injected (no commit)
 Verify    → diff is checked against rules + lint/type-check/tests, self-fixing
 Finish    → a final check runs, then new learnings are promoted back into rules/
+            in the same PR (no dead-letter; pending/ holds only unresolved ones)
 ```
 
 ## Two layers
@@ -143,13 +144,21 @@ and review gates) on top as permitted OKF extension fields.
   tasks/<slug>/
     brief.md             # goal / background / load-bearing list / acceptance
     context.yaml         # injected rule ids + injection fingerprint
-  journal/shared/<slug>.md   # team-visible structural learnings
-  learnings/pending/<slug>.md # finish-stage candidates awaiting promotion to rules/
+  journal/shared/<slug>.md      # team-visible structural learnings
+  journal/by-actor/<actor>/<slug>.md  # one actor's task-level notes (in-repo)
+  learnings/pending/<slug>.md   # ONLY unresolved learnings needing human design
+  scripts/
+    octospec-update-spec.sh     # Finish-phase helper: drafts a rule + promotion
+                                # issue body, or writes a per-actor journal entry
 ```
 
-> Personal scratch journals are **not** stored in the repo tree. They live in
-> `~/.octospec/journal/<repo>/<user>/` (machine-local) to avoid leaking private
-> notes into the repository or pull requests.
+> Reusable learnings are promoted **in the same PR** at Finish (edit the relevant
+> `rules/<rule>.md` in place, or add a new rule + `_index.yaml` entry) — the PR
+> review is the gate. `learnings/pending/` is reserved only for *unresolved*
+> learnings that still need human design before becoming a rule; finished
+> learnings are never stranded waiting on a separate PR. The
+> `.octospec/scripts/octospec-update-spec.sh` helper drafts these artifacts
+> without ever writing `rules/` on main directly.
 
 ## OKF conformance
 
