@@ -119,6 +119,14 @@ check "missing --kind refused" refuses --slug ok-slug --learning x
 check "bad --kind refused" refuses --slug ok-slug --kind bogus --learning x
 check "bad slug refused" refuses --slug Bad_Slug --kind task --learning x
 check "empty learning refused" refuses_stdin --slug ok-slug --kind task
+# A value-taking option must not silently swallow the NEXT option as its value.
+check "flag-as-value (--title --priority) refused" \
+  refuses --title --priority 88 --slug ok-slug --kind task --learning x
+check "flag-as-value (--learning --kind) refused" \
+  refuses --slug ok-slug --kind task --learning --kind
+# ...but the --opt=val escape hatch still accepts a value that starts with --.
+check "--opt=--value escape hatch accepted" \
+  "$SCRIPT" --slug ok-slug --kind task --actor t --title=--weird --learning x
 
 echo "== 6. backslash in learning -> valid YAML frontmatter (octospec-lint) =="
 # A learning whose first line carries a regex (\d) and a Windows path (C:\tmp):
@@ -174,6 +182,48 @@ else
   echo "  note: octospec-lint.py not found alongside scripts; used self-contained YAML parse"
 fi
 rm -f "$BS_DRAFT" "$BS_JOURNAL"
+
+echo "== 7. CJK actor names must not collide into one lane =="
+# tr -c 'a-z0-9-' '-' maps every byte of a pure-CJK / punctuation name to '-',
+# which after collapse+trim leaves an empty handle. The fix derives a per-name
+# hash so distinct authors get distinct lanes instead of silently overwriting
+# each other under a shared 'actor-' lane.
+OUT_A="$("$SCRIPT" --slug selftest-cjk --kind task --actor '李雷' --learning 'lei learning')"
+OUT_B="$("$SCRIPT" --slug selftest-cjk --kind task --actor '韩梅梅' --learning 'mei learning')"
+LANE_A="$(printf '%s' "$OUT_A" | sed -n '1p')"
+LANE_B="$(printf '%s' "$OUT_B" | sed -n '1p')"
+check "CJK actor A wrote a journal" test -f "$OCTOSPEC_DIR/../$LANE_A"
+check "CJK actor B wrote a journal" test -f "$OCTOSPEC_DIR/../$LANE_B"
+check "CJK actors land in DISTINCT lanes (no last-writer-wins)" test "$LANE_A" != "$LANE_B"
+check "CJK lane A is not the bare 'actor-' lane" sh -c "case \"\$1\" in */by-actor/actor-/*) exit 1;; *) exit 0;; esac" _ "$LANE_A"
+check "CJK lane handle is [a-z][a-z0-9-]*" sh -c "printf '%s' \"\$1\" | grep -qE '/by-actor/[a-z][a-z0-9-]*/selftest-cjk\\.md$'" _ "$LANE_A"
+check "李雷's learning is intact in its own lane" grep -q 'lei learning' "$OCTOSPEC_DIR/../$LANE_A"
+check "韩梅梅's learning is intact in its own lane" grep -q 'mei learning' "$OCTOSPEC_DIR/../$LANE_B"
+# same CJK name -> same lane (stable, not random)
+OUT_A2="$("$SCRIPT" --slug selftest-cjk2 --kind task --actor '李雷' --learning 'again')"
+LANE_A2="$(printf '%s' "$OUT_A2" | sed -n '1p')"
+check "same CJK name maps to a stable lane" \
+  test "$(dirname "$LANE_A")" = "$(dirname "$LANE_A2")"
+
+echo "== 8. literal newline in --title/--description folds to single-line YAML =="
+# --description is consumed by the rule path (the task path derives description
+# from the learning's first line), so exercise the rule path to cover both.
+"$SCRIPT" --slug selftest-nl --kind rule --no-promote \
+  --title "$(printf 'line one\nline two')" \
+  --description "$(printf 'desc a\ndesc b')" --learning 'body' >/dev/null
+NL_DRAFT="$PENDING/selftest-nl-rule-draft.md"
+check "newline-title draft created" test -f "$NL_DRAFT"
+check "newline-title draft is valid YAML frontmatter" yaml_ok "$NL_DRAFT"
+check "title folded to one line" grep -q '^title: "line one line two"$' "$NL_DRAFT"
+check "description folded to one line" grep -q '^description: "desc a desc b"$' "$NL_DRAFT"
+
+# Scrub the stray journals these sections created (outside the selftest-* / actor
+# fixtures that cleanup() handles).
+find "$BY_ACTOR" -name 'selftest-cjk.md'  -delete 2>/dev/null || true
+find "$BY_ACTOR" -name 'selftest-cjk2.md' -delete 2>/dev/null || true
+rm -f "$NL_DRAFT"
+# section 5's --opt=--value escape-hatch check wrote actor 't' / slug 'ok-slug'.
+find "$BY_ACTOR" -name 'ok-slug.md' -delete 2>/dev/null || true
 
 echo
 echo "RESULT: $pass passed, $fail failed"

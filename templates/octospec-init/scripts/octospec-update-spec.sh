@@ -115,6 +115,13 @@ while [ $# -gt 0 ]; do
   takeval() {
     if [ -n "$val" ]; then printf '%s' "$val"; return 0; fi
     [ $# -ge 2 ] || die "option $1 needs a value"
+    # Reject the next token when it is itself a long option (--foo): otherwise a
+    # mistyped `--title --priority 88` silently swallows `--priority` as the
+    # title. The `--opt=val` form sets $val above and never reaches here, so
+    # values that legitimately start with a single dash still work via `--opt=-x`.
+    case "$2" in
+      --*) die "option $1 needs a value (got the option '$2'); use $1=<value> if the value really starts with --";;
+    esac
     printf '%s' "$2"
   }
   case "$arg" in
@@ -157,6 +164,12 @@ case "$PRIORITY" in
   *) [ "$PRIORITY" -le 100 ] || die "--priority must be 0-100: $PRIORITY";;
 esac
 case "$TIER" in repo|global) :;; *) die "--tier must be repo|global: $TIER";; esac
+
+# title/description land in a single-line double-quoted YAML scalar; a literal
+# newline would split the scalar and emit malformed YAML. Fold embedded newlines
+# (and carriage returns) to spaces so a multi-line value stays lint-clean.
+TITLE="$(printf '%s' "$TITLE" | tr '\n\r' '  ')"
+DESCRIPTION="$(printf '%s' "$DESCRIPTION" | tr '\n\r' '  ')"
 
 # --- gather the learning text -------------------------------------------------
 if [ "$LEARNING_SET" -eq 0 ]; then
@@ -339,16 +352,29 @@ if [ "$KIND" = "task" ]; then
     ACTOR="$(git config user.name 2>/dev/null || true)"
   fi
   [ -n "$ACTOR" ] || ACTOR="unknown"
+  ACTOR_ORIG="$ACTOR"
   # Normalize to the by-actor convention: lowercase, [a-z0-9-], starts with a letter.
   ACTOR="$(printf '%s' "$ACTOR" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-')"
   # collapse repeated dashes and trim leading/trailing dashes
   while case "$ACTOR" in *--*) true;; *) false;; esac; do ACTOR="${ACTOR//--/-}"; done
   ACTOR="${ACTOR#-}"
   ACTOR="${ACTOR%-}"
+  # If normalization stripped every [a-z0-9] byte (CJK / punctuation / emoji
+  # names — common on teams that use Chinese handles), ACTOR is now empty. A bare
+  # "actor-" prefix would then collapse every such author into ONE shared lane and
+  # silently last-writer-wins their journals. Derive a stable, per-name unique
+  # handle from a hash of the ORIGINAL name instead, so 李雷 and 韩梅梅 land in
+  # distinct lanes.
+  if [ -z "$ACTOR" ]; then
+    actor_hash="$(printf '%s' "$ACTOR_ORIG" | sha1sum | head -c 8)"
+    ACTOR="actor-$actor_hash"
+  fi
   case "$ACTOR" in
     [a-z]*) :;;
     *) ACTOR="actor-$ACTOR";;   # ensure it starts with a letter
   esac
+  # Re-trim in case the letter-prefix step left a trailing dash (e.g. "actor-").
+  ACTOR="${ACTOR%-}"
   [ -n "$ACTOR" ] || die "could not derive a valid --actor handle"
 
   if [ -z "$TAGS" ]; then TAGS="octospec-learning,$SLUG"; fi
