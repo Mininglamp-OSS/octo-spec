@@ -27,9 +27,16 @@ questions, discussions, or product decisions.
 
 ## Flow
 
-1. **Parse intent.** Extract: target repo, task description, task slug
-   (kebab-case). If repo is ambiguous or not on the allowlist, ask — do not
-   guess a path.
+1. **Parse intent.** Extract: target repo, task description, task slug. If repo
+   is ambiguous or not on the allowlist, ask — do not guess a path.
+   - 🔴 **The slug is untrusted chat-derived input.** It is interpolated into
+     filesystem paths, a branch name, and shell command strings, so it MUST be
+     validated before any such use: require it to match `^[a-z0-9][a-z0-9-]*$`
+     (lowercase alphanumeric + hyphens, no leading hyphen). Reject anything with
+     `/`, `..`, whitespace, or shell metacharacters — a crafted slug is a
+     path-traversal and command-injection surface. If the derived slug fails the
+     pattern, slugify it deterministically or ask; never pass it through raw. See
+     `shared/octo-code-core.md` §0.
 
 2. **Preflight gate** (`shared/octo-code-core.md` §A). Engine auth smoke +
    repo allowlist/cwd + octo-spec onboarded + per-task worktree. Stop on the

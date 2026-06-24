@@ -26,7 +26,7 @@ integrations/
     ├── README.md
     └── skills/
         ├── octo-code/          # ACP-free: one message → headless claude → PR
-        ├── octo-code-multica/  # (future) multica-dispatched variant
+        ├── octo-code-multica/  # PLANNED (not present yet) — multica variant
         └── shared/             # logic shared across the variants (no drift)
 ```
 

@@ -6,6 +6,30 @@ drift between variants.
 
 ---
 
+## 0. Slug validation (do this before the slug touches anything)
+
+The task slug is **untrusted, chat-derived input** that gets interpolated into
+filesystem paths (`.octospec/tasks/<slug>/`, the worktree dir), a branch name,
+and the shell command strings in §A/§E. An unvalidated slug containing `../` is a
+path-traversal (write/worktree outside the intended tree); one containing shell
+metacharacters is a command-injection surface.
+
+**Hard requirement:** the slug MUST match `^[a-z0-9][a-z0-9-]*$` (lowercase
+alphanumeric + hyphens, no leading hyphen, no `/`, no `..`, no whitespace, no
+shell metacharacters) before it is used anywhere.
+
+```bash
+if ! printf '%s' "$slug" | grep -Eq '^[a-z0-9][a-z0-9-]*$'; then
+  echo "octo-code: refusing unsafe slug: $slug" >&2
+  exit 1
+fi
+```
+
+Derive the slug deterministically from the task (lowercase, spaces→`-`, strip
+disallowed chars) and then assert the pattern; if it still fails, ask rather than
+pass it through raw. Always double-quote `"<task-slug>"` in every command below as
+defense in depth — but validation, not quoting, is the primary control.
+
 ## A. Preflight gate (run before any dispatch)
 
 Refuse to start work unless all of these pass. Report the first failure; do not
