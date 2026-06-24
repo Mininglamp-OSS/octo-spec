@@ -29,7 +29,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --repo) REPO="${2:-}"; shift 2 || { echo "octo-code-doctor: --repo needs a path" >&2; exit 2; } ;;
     --json) JSON=1; shift ;;
-    -h|--help) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "octo-code-doctor: unknown arg: $1" >&2; exit 2 ;;
   esac
 done
@@ -115,13 +115,18 @@ if [ -n "$REPO" ]; then
     if [ -d "$REPO/.octospec" ]; then
       PIN=""
       for f in "$REPO/.octospec/manifest.yaml" "$REPO/.octospec/manifest.yml"; do
-        [ -f "$f" ] && PIN="$(grep -E '^[[:space:]]*(version|pin)[[:space:]]*:' "$f" 2>/dev/null | head -1 | tr -d '\r')"
+        if [ -f "$f" ]; then
+          # Canonical field is `inherits: octo-spec@X.Y.Z`; older/alt manifests
+          # may use `version:`/`pin:`. Extract the RHS value, not the whole line.
+          PIN="$(grep -E '^[[:space:]]*(inherits|version|pin)[[:space:]]*:' "$f" 2>/dev/null \
+                 | head -1 | sed -E 's/^[[:space:]]*(inherits|version|pin)[[:space:]]*:[[:space:]]*//; s/[[:space:]]*(#.*)?$//' | tr -d '\r')"
+        fi
         [ -n "$PIN" ] && break
       done
       if [ -n "$PIN" ]; then
-        add ok req "octo-spec onboarded" "$REPO/.octospec present (${PIN# })"
+        add ok req "octo-spec onboarded" "$REPO/.octospec present (pin: $PIN)"
       else
-        add warn req "octo-spec onboarded" "$REPO/.octospec present but no manifest pin found — verify the pin"
+        add warn req "octo-spec onboarded" "$REPO/.octospec present but no manifest pin found — verify the manifest"
       fi
     else
       add warn req "octo-spec onboarded" "$REPO has no .octospec/ — onboarding (core §D) will run as a first step"
@@ -139,8 +144,8 @@ $r
 EOF
     [ $first = 1 ] || printf ','
     first=0
-    esc_nm=$(printf '%s' "$nm" | sed 's/\\/\\\\/g; s/"/\\"/g')
-    esc_dt=$(printf '%s' "$dt" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    esc_nm=$(printf '%s' "$nm" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\r//g')
+    esc_dt=$(printf '%s' "$dt" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\r//g')
     printf '{"status":"%s","required":"%s","name":"%s","detail":"%s"}' "$st" "$rq" "$esc_nm" "$esc_dt"
   done
   printf ']}\n'

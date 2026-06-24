@@ -124,8 +124,12 @@ are environment preconditions, not things the skill can fix at request time:
 9. **Identity** — commit author / PR author = the configured bot identity, so
    CODEOWNERS / branch protection stay meaningful for multi-user dispatch.
 
-Run `shared/octo-code-doctor.sh` to check items 1, 2 (smoke), 6, and 7 of this
-list automatically before rollout.
+Run `shared/octo-code-doctor.sh` before rollout to verify the host
+prerequisites this checklist depends on: item 1 (engine auth, via the live §A
+smoke), the `git` / `gh` / `jq` tools the flow shells out to, and — with
+`--repo <path>` — item 6's repo onboarding (`.octospec/` pin). The runtime-only
+items (2 permission posture, 3–5 completion/resume/PR-fallback, 7 worktree,
+8 caps, 9 identity) are exercised during a real run, not by the doctor.
 
 ## How a team member uses it
 
