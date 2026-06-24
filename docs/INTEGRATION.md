@@ -83,3 +83,17 @@ directly, Layer 2 (the PR gate) still catches load-bearing work.
 2. If it's a new way to dispatch work, make sure its task brief includes the
    "read `.octospec/`" pointer.
 3. You never need to weaken Layer 2 — it's the safety net for every path.
+
+## Host adapters (`integrations/`)
+
+Beyond agents that read `.octospec/` in-repo, octo-spec ships optional **host
+adapters** under `integrations/` that let a bot drive the whole flow for an end
+user (message → onboarding → coding → PR), without the user opening a coding
+agent.
+
+This does **not** change the spec-only contract. Adapters are thin glue: they
+route intent, launch an external coding engine, and check completion. The engine
+(e.g. Claude Code headless `claude -p`) is still external; octo-spec itself ships
+no runtime engine. See `integrations/README.md` for the layering and
+`integrations/octo/skills/octo-code/` for the first adapter (ACP-free, headless
+engine, no multica dependency).
