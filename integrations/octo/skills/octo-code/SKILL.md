@@ -19,6 +19,29 @@ Shared procedures (preflight, engine call, completion check, onboarding,
 cleanup) live in **`../shared/octo-code-core.md`** — read it; this file is the
 entry flow that sequences those pieces.
 
+## Install & setup (one message, then a doctor)
+
+A team member installs octo-code by sending the bot one message
+(*"install octo-code"* / *"安装 octo-code"*). Be honest about the two halves
+(`shared/octo-code-core.md` §F):
+
+1. **Skill files install in one message** — they are just files; the bot fetches
+   `integrations/octo/skills/octo-code/` + `shared/` into its skills dir and
+   auto-discovery picks them up.
+2. **The host engine cannot be installed by a chat message.** `claude -p` needs
+   the `claude` CLI installed + non-interactively authenticated, plus `git` /
+   `gh` / `jq` on the bot host. So right after install, **run the doctor and
+   report the gaps** instead of pretending the environment is ready:
+   ```bash
+   <skill-dir>/shared/octo-code-doctor.sh             # human ✅/⚠️/❌ report
+   <skill-dir>/shared/octo-code-doctor.sh --json      # machine-readable
+   <skill-dir>/shared/octo-code-doctor.sh --repo <p>   # + repo onboarding check
+   ```
+   The doctor is read-only and exits `0` only when every required precondition
+   passes. Relay its output back to the thread so the operator sees exactly what
+   host setup remains. When it is all-green, the user can just say *"use
+   octo-code to add X to repo Y"*.
+
 ## When to use
 
 Trigger when an octo message is a **coding request against a known repo**:
@@ -84,7 +107,8 @@ Every bot host that runs octo-code must have these set **before** rollout — th
 are environment preconditions, not things the skill can fix at request time:
 
 1. **Engine auth** — `ANTHROPIC_*` in `~/.claude/settings.json` `env` (native +
-   wrapper inherit it). Verify with the §A smoke. Stale OAuth → 401.
+   wrapper inherit it). Verify with the §A smoke (or `shared/octo-code-doctor.sh`,
+   which runs it for you). Stale OAuth → 401.
 2. **Permission posture** — scoped `--allowedTools` (preferred) or
    `permissions.defaultMode` in `settings.json`; unattended runs cannot answer a
    permission prompt.
@@ -99,6 +123,23 @@ are environment preconditions, not things the skill can fix at request time:
    request / per-user budget.
 9. **Identity** — commit author / PR author = the configured bot identity, so
    CODEOWNERS / branch protection stay meaningful for multi-user dispatch.
+
+Run `shared/octo-code-doctor.sh` before rollout to verify the host
+prerequisites this checklist depends on: item 1 (engine auth, via the live §A
+smoke), the `git` / `gh` / `jq` tools the flow shells out to, and — with
+`--repo <path>` — item 6's repo onboarding (`.octospec/` pin). The runtime-only
+items (2 permission posture, 3–5 completion/resume/PR-fallback, 7 worktree,
+8 caps, 9 identity) are exercised during a real run, not by the doctor.
+
+## How a team member uses it
+
+No commands to memorize — plain language in the octo thread:
+
+> *"use octo-code to add a rate-limit middleware to octo-server"*
+> *"octo-code: fix the null-pointer in octo-web's login flow"*
+
+The bot parses intent + repo, runs the flow above, and replies in-thread with the
+PR URL, test result, and cost. The user only reviews/approves the PR.
 
 ## Validation
 

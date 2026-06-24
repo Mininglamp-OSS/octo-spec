@@ -20,7 +20,20 @@ reports back in the originating thread. The user never opens Claude Code.
 - **`skills/octo-code-multica/`** — (future) the same flow, but dispatched
   through multica issues for heavier async tracking. Not built yet.
 - **`skills/shared/`** — logic both variants depend on (engine call, completion
-  check, preflight), kept in one place so the two skills never drift.
+  check, preflight), kept in one place so the two skills never drift. Includes
+  **`octo-code-doctor.sh`** — the executable preflight/health check behind the
+  one-message install (verifies claude CLI + headless auth + git/gh/jq + optional
+  repo onboarding; read-only, `✅/⚠️/❌` per item).
+
+## Install & use (for team members)
+
+1. **Install** — one message to the bot: *"install octo-code"*. The skill files
+   install in one step; the bot then runs `shared/octo-code-doctor.sh` and reports
+   any host setup still needed (the `claude` CLI + its auth can't be installed by
+   a chat message). When the doctor is all-green, you're ready.
+2. **Use** — plain language: *"use octo-code to add X to repo Y"* /
+   *"octo-code: fix bug Z in repo W"*. The bot runs the 4-phase loop and replies
+   with the PR URL, test result, and cost. You just review the PR.
 
 ## The engine: headless `claude -p`, not ACP
 
