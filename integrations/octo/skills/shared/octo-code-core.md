@@ -177,13 +177,15 @@ So the install flow is **two steps, the second automated**:
    ```bash
    <skill-dir>/shared/octo-code-doctor.sh            # human report
    <skill-dir>/shared/octo-code-doctor.sh --json     # machine-readable
-   <skill-dir>/shared/octo-code-doctor.sh --repo <path>   # also check repo onboarding
+   <skill-dir>/shared/octo-code-doctor.sh --repo <path>   # + require repo onboarding
    ```
    The doctor checks each guardrail precondition (claude CLI, headless auth smoke,
-   git, gh auth, jq, optional python/pytest, optional repo `.octospec` pin) and
-   prints `✅ / ⚠️ / ❌` per item with a fix hint. It is **read-only** — it never
-   installs, logs in, or mutates a repo. Exit `0` = ready, `1` = a required check
-   failed.
+   git, gh auth, jq, optional python/pytest). With `--repo`, the target repo's
+   `.octospec` onboarding becomes a **required** check: a repo with no `.octospec/`
+   or no manifest pin fails (exit 1), so an automated install flow never treats a
+   non-onboarded repo as ready. The doctor prints `✅ / ⚠️ / ❌` per item with a
+   fix hint. It is **read-only** — it never installs, logs in, or mutates a repo.
+   Exit `0` = ready, `1` = a required check failed.
 
 The bot relays the doctor result back into the thread verbatim-ish, so the
 operator sees exactly what host setup remains (e.g. *"❌ claude auth — set

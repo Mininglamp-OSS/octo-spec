@@ -11,8 +11,11 @@
 # Usage:
 #   octo-code-doctor.sh [--repo <path>] [--json]
 #
-#   --repo <path>   also check that <path> is a git repo onboarded to octo-spec
-#                   (carries .octospec/ with a manifest pin).
+#   --repo <path>   also require that <path> is a git repo onboarded to octo-spec
+#                   (carries .octospec/ with a manifest pin). With --repo, a
+#                   non-onboarded repo is a REQUIRED failure (exit 1), matching
+#                   the preflight contract (core §A.3) that onboarding must hold
+#                   before a coding run.
 #   --json          emit a machine-readable summary instead of the human report.
 #
 # Exit: 0 = all required checks pass (ready to run octo-code).
@@ -104,7 +107,7 @@ else
   add warn opt "python3" "not found — only needed for python repo gates"
 fi
 
-# 7. optional repo onboarding check
+# 7. repo onboarding check (when --repo given, this is a REQUIRED gate)
 if [ -n "$REPO" ]; then
   if [ ! -d "$REPO" ]; then
     add fail req "repo path" "$REPO does not exist"
@@ -126,10 +129,10 @@ if [ -n "$REPO" ]; then
       if [ -n "$PIN" ]; then
         add ok req "octo-spec onboarded" "$REPO/.octospec present (pin: $PIN)"
       else
-        add warn req "octo-spec onboarded" "$REPO/.octospec present but no manifest pin found — verify the manifest"
+        add fail req "octo-spec onboarded" "$REPO/.octospec present but no manifest pin (inherits/version/pin) found — invalid onboarding; fix the manifest or re-run onboarding (core §D)"
       fi
     else
-      add warn req "octo-spec onboarded" "$REPO has no .octospec/ — onboarding (core §D) will run as a first step"
+      add fail req "octo-spec onboarded" "$REPO has no .octospec/ — NOT onboarded; run onboarding (core §D) before octo-code can run against it"
     fi
   fi
 fi
@@ -144,9 +147,14 @@ $r
 EOF
     [ $first = 1 ] || printf ','
     first=0
-    esc_nm=$(printf '%s' "$nm" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\r//g')
-    esc_dt=$(printf '%s' "$dt" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\r//g')
-    printf '{"status":"%s","required":"%s","name":"%s","detail":"%s"}' "$st" "$rq" "$esc_nm" "$esc_dt"
+    if have jq; then
+      jq -cn --arg status "$st" --arg required "$rq" --arg name "$nm" --arg detail "$dt" \
+        '{status:$status, required:$required, name:$name, detail:$detail}'
+    else
+      esc_nm=$(printf '%s' "$nm" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\r//g')
+      esc_dt=$(printf '%s' "$dt" | sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\r//g')
+      printf '{"status":"%s","required":"%s","name":"%s","detail":"%s"}' "$st" "$rq" "$esc_nm" "$esc_dt"
+    fi
   done
   printf ']}\n'
 else
