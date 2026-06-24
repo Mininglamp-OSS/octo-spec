@@ -9,7 +9,7 @@
 #   2. this doctor then tells the operator what host setup is still required.
 #
 # Usage:
-#   octo-code-doctor.sh [--repo <path>] [--json]
+#   octo-code-doctor.sh [--repo <path> | --repo=<path>] [--json]
 #
 #   --repo <path>   also require that <path> is a git repo onboarded to octo-spec
 #                   (carries .octospec/ with a manifest pin). With --repo, a
@@ -30,7 +30,12 @@ REPO=""
 JSON=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --repo) REPO="${2:-}"; shift 2 || { echo "octo-code-doctor: --repo needs a path" >&2; exit 2; } ;;
+    --repo)
+      case "${2:-}" in
+        ""|-*) echo "octo-code-doctor: --repo needs a path argument" >&2; exit 2 ;;
+      esac
+      REPO="$2"; shift 2 ;;
+    --repo=*) REPO="${1#--repo=}"; [ -n "$REPO" ] || { echo "octo-code-doctor: --repo= needs a path" >&2; exit 2; }; shift ;;
     --json) JSON=1; shift ;;
     -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "octo-code-doctor: unknown arg: $1" >&2; exit 2 ;;
@@ -56,14 +61,24 @@ if have claude; then
 
   # 2. non-interactive auth smoke (the load-bearing check).
   #    Unset shell-level overrides so we test settings.json env, like a real run.
-  AUTH_OUT="$(env -u ANTHROPIC_API_KEY -u ANTHROPIC_BASE_URL \
-      claude -p "Reply with exactly: OCTO_CODE_AUTH_OK" --output-format json 2>/dev/null \
-      | (jq -r '.result' 2>/dev/null || cat))"
-  if printf '%s' "$AUTH_OUT" | grep -q "OCTO_CODE_AUTH_OK"; then
+  #    Capture the engine's exit status separately, and require .result to EQUAL
+  #    the sentinel exactly: a failed run that merely echoes the prompt (which
+  #    contains the sentinel) must NOT be accepted as authenticated.
+  AUTH_RAW="$(env -u ANTHROPIC_API_KEY -u ANTHROPIC_BASE_URL \
+      claude -p "Reply with exactly this token and nothing else: OCTO_CODE_AUTH_OK" \
+      --output-format json 2>/dev/null)"
+  AUTH_RC=$?
+  if have jq; then
+    AUTH_RESULT="$(printf '%s' "$AUTH_RAW" | jq -r '.result // empty' 2>/dev/null)"
+  else
+    AUTH_RESULT="$AUTH_RAW"
+  fi
+  AUTH_RESULT_TRIMMED="$(printf '%s' "$AUTH_RESULT" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+  if [ "$AUTH_RC" -eq 0 ] && [ "$AUTH_RESULT_TRIMMED" = "OCTO_CODE_AUTH_OK" ]; then
     add ok req "claude auth (headless)" "non-interactive auth OK"
   else
     add fail req "claude auth (headless)" \
-      "headless smoke did not return OCTO_CODE_AUTH_OK — set ANTHROPIC_* in ~/.claude/settings.json env, then re-run. (got: $(printf '%s' "$AUTH_OUT" | head -c 80))"
+      "headless smoke failed (exit=$AUTH_RC; .result must equal OCTO_CODE_AUTH_OK) — set ANTHROPIC_* in ~/.claude/settings.json env, then re-run. (got: $(printf '%s' "$AUTH_RESULT_TRIMMED" | head -c 80))"
   fi
 else
   add fail req "claude CLI" "not found — install Claude Code (this cannot be done from a chat message; install on the bot host)"
