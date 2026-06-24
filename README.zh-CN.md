@@ -59,7 +59,10 @@ octo-spec 是 **git 原生(git-native)** 且 **Claude Code 优先(Claude Code fi
 
 - **git** —— octo-spec 是 git 原生的;规范随仓库一起流转。
 - **bash** —— 用于运行 `octospec-sync.sh`(接入)以及各助手脚本。
-- **python3 + PyYAML** —— 仅在运行 OKF lint(`octospec-lint.sh`)时需要,
+- **python3** —— 接入时即需要:`octospec-sync.sh` 会调用
+  `octospec_sync_block.py` 来 bootstrap/更新 agent 文件(`CLAUDE.md`、
+  `AGENTS.md` 等)。这一步只用标准库,无需额外包。
+- **PyYAML** —— 额外用于运行 OKF lint(`octospec-lint.sh`),
   用 `pip install pyyaml` 安装。
 - 一个**编码 agent**(Claude Code、Codex、OpenClaw 等)来执行工作流。
   octo-spec 提供规则和脚本,真正写代码的是 agent。

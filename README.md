@@ -61,8 +61,11 @@ come with it — reviewable, versioned, and improvable like any other code artif
 
 - **git** — octo-spec is git-native; the standards travel with the repo.
 - **bash** — to run `octospec-sync.sh` (onboarding) and the helper scripts.
-- **python3 + PyYAML** — only needed to run the OKF lint
-  (`octospec-lint.sh`). Install with `pip install pyyaml`.
+- **python3** — required for onboarding: `octospec-sync.sh` invokes
+  `octospec_sync_block.py` to bootstrap/update agent files (`CLAUDE.md`,
+  `AGENTS.md`, …). The stdlib is enough here — no extra packages.
+- **PyYAML** — additionally needed to run the OKF lint (`octospec-lint.sh`).
+  Install with `pip install pyyaml`.
 - A **coding agent** (Claude Code, Codex, OpenClaw, …) to execute the workflow.
   octo-spec ships the rules and scripts; the agent does the coding.
 
