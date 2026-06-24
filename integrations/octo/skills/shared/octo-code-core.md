@@ -150,3 +150,47 @@ Remove the per-task worktree when done (success or give-up):
 ```bash
 git -C "<repo>" worktree remove "<repo>/.octo-code-wt/<task-slug>" --force
 ```
+
+---
+
+## F. Install & doctor (one-message setup, honestly)
+
+Team members install octo-code by sending the bot one message
+(e.g. *"install octo-code"* / *"安装 octo-code"*). What that message can and
+cannot do is the whole point of this section — do not over-promise.
+
+**What one message CAN do — install the skill files.** The skill is just files.
+The bot fetches `integrations/octo/skills/octo-code/` + `shared/` from octo-spec
+into its own skills directory (git fetch / clawhub / copy), and auto-discovery
+picks it up. This half is genuinely one-message.
+
+**What one message CANNOT do — provision the host engine.** octo-code runs
+`claude -p`, which needs the `claude` CLI installed and **non-interactively
+authenticated**, plus `git` / `gh` / `jq` on the bot host. A chat message cannot
+install or log in to a CLI on someone's machine. Claiming otherwise is the exact
+"paper OK" failure octo-spec exists to prevent.
+
+So the install flow is **two steps, the second automated**:
+
+1. **Install the skill files** (one message).
+2. **Run the doctor immediately and report the gaps**:
+   ```bash
+   <skill-dir>/shared/octo-code-doctor.sh            # human report
+   <skill-dir>/shared/octo-code-doctor.sh --json     # machine-readable
+   <skill-dir>/shared/octo-code-doctor.sh --repo <path>   # also check repo onboarding
+   ```
+   The doctor checks each guardrail precondition (claude CLI, headless auth smoke,
+   git, gh auth, jq, optional python/pytest, optional repo `.octospec` pin) and
+   prints `✅ / ⚠️ / ❌` per item with a fix hint. It is **read-only** — it never
+   installs, logs in, or mutates a repo. Exit `0` = ready, `1` = a required check
+   failed.
+
+The bot relays the doctor result back into the thread verbatim-ish, so the
+operator sees exactly what host setup remains (e.g. *"❌ claude auth — set
+ANTHROPIC_* in ~/.claude/settings.json env"*). When the doctor is all-green,
+octo-code is ready and the user can just say *"use octo-code to add X to repo Y"*.
+
+> **Why a doctor instead of an installer.** The guardrail checklist in
+> `octo-code/SKILL.md` is a list of *environment preconditions*. The doctor is
+> that checklist made executable: it turns "did the operator set this up?" from a
+> guess into a checked fact, before the first real run can fail on it.
