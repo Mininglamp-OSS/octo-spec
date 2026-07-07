@@ -21,7 +21,7 @@ tmp="$(mktemp -d)"; TMP_DIRS+=("$tmp")
 cd "$tmp"
 git init -q
 mkdir -p .octospec
-printf 'inherits: octo-spec@1.2.0\n' > .octospec/manifest.yaml
+printf 'inherits: octo-spec@2.0.0\n' > .octospec/manifest.yaml
 printf '# CLAUDE\n\nteam rule\n' > CLAUDE.md
 # orphan begin marker -> the python helper must REFUSE this file
 printf '# AGENTS\n\n<!-- octospec:begin -->\nrule beta KEEP ME\n' > AGENTS.md
@@ -65,7 +65,7 @@ tmp2="$(mktemp -d)"; TMP_DIRS+=("$tmp2")
 cd "$tmp2"
 git init -q
 mkdir -p .octospec
-printf 'inherits: octo-spec@1.2.0\n' > .octospec/manifest.yaml
+printf 'inherits: octo-spec@2.0.0\n' > .octospec/manifest.yaml
 printf '# CLAUDE\n\nteam rule keep me\n' > CLAUDE.md
 # Intentionally NO AGENTS.md / GEMINI.md / QWEN.md.
 
@@ -178,14 +178,14 @@ fi
 # Version assertion (YUJ-5344): the manifest pin (inherits: octo-spec@X) must
 # match the GLOBAL_SRC checkout's VERSION, asserted BEFORE any vendoring so a
 # stale pin never silently ships the wrong global rules. GLOBAL_SRC=$REPO has
-# VERSION=1.2.0, so the fixtures pin 1.2.0 on the happy path.
+# VERSION=2.0.0, so the fixtures pin 2.0.0 on the happy path.
 
 # [api] 1) pin == VERSION -> exit 0, block synced, and re-running is idempotent.
 tmp4="$(mktemp -d)"; TMP_DIRS+=("$tmp4")
 cd "$tmp4"
 git init -q
 mkdir -p .octospec
-printf 'inherits: octo-spec@1.2.0\n' > .octospec/manifest.yaml
+printf 'inherits: octo-spec@2.0.0\n' > .octospec/manifest.yaml
 printf '# CLAUDE\n\nteam rule\n' > CLAUDE.md
 
 set +e
@@ -194,7 +194,7 @@ code4=$?
 set -e
 
 if [ "$code4" -eq 0 ]; then
-  note ok "version-match sync exits 0 (pin 1.2.0 == VERSION 1.2.0)"
+  note ok "version-match sync exits 0 (pin 2.0.0 == VERSION 2.0.0)"
 else
   note FAIL "version-match sync exited $code4"; fail=1
   cat out.log
@@ -294,7 +294,7 @@ mkdir -p "$nover/global"
 cd "$tmp7"
 git init -q
 mkdir -p .octospec
-printf 'inherits: octo-spec@1.2.0\n' > .octospec/manifest.yaml
+printf 'inherits: octo-spec@2.0.0\n' > .octospec/manifest.yaml
 printf '# CLAUDE\n\nteam rule\n' > CLAUDE.md
 
 set +e
@@ -348,14 +348,11 @@ else
   cat out.log
 fi
 
-# GAP-2: slash commands discoverable at the repo root.
-if [ -f .claude/commands/octospec-plan.md ] \
-   && [ -f .claude/commands/octospec-go.md ] \
-   && [ -f .claude/commands/octospec-check.md ] \
-   && [ -f .claude/commands/octospec-finish.md ]; then
-  note ok "slash commands materialized to repo-root .claude/commands/"
+# GAP-2: slash command discoverable at the repo root.
+if [ -f .claude/commands/octospec.md ]; then
+  note ok "slash command materialized to repo-root .claude/commands/"
 else
-  note FAIL "repo-root .claude/commands/octospec-* missing after sync"; fail=1
+  note FAIL "repo-root .claude/commands/octospec.md missing after sync"; fail=1
 fi
 
 # GAP-2: workflow skill discoverable at the repo root too.
@@ -393,7 +390,7 @@ if [ "$code8b" -eq 0 ] && [ "$before_claude" = "$after_claude" ] && [ "$before_p
 else
   note FAIL "root-scaffolding sync not idempotent (code=$code8b)"; fail=1
 fi
-if grep -q "kept 6 existing" out2.log && grep -q "PULL_REQUEST_TEMPLATE.md -> kept existing" out2.log; then
+if grep -q "kept 3 existing" out2.log && grep -q "PULL_REQUEST_TEMPLATE.md -> kept existing" out2.log; then
   note ok "idempotent second run reports existing files kept"
 else
   note FAIL "second run did not report kept-existing scaffolding"; fail=1
@@ -408,7 +405,7 @@ cd "$tmp9"
 git init -q
 cp -r "$REPO/templates/octospec-init" .octospec
 mkdir -p .claude/commands .github
-printf 'MY CUSTOM PLAN KEEP ME\n' > .claude/commands/octospec-plan.md
+printf 'MY CUSTOM COMMAND KEEP ME\n' > .claude/commands/octospec.md
 printf 'MY OWN PR TEMPLATE KEEP ME\n' > .github/PULL_REQUEST_TEMPLATE.md
 
 set +e
@@ -423,7 +420,7 @@ else
   cat out.log
 fi
 
-if grep -q "MY CUSTOM PLAN KEEP ME" .claude/commands/octospec-plan.md; then
+if grep -q "MY CUSTOM COMMAND KEEP ME" .claude/commands/octospec.md; then
   note ok "user's customized slash command left untouched"
 else
   note FAIL "sync clobbered a user-customized slash command"; fail=1
@@ -435,10 +432,10 @@ else
   note FAIL "sync clobbered a user-owned PR template"; fail=1
 fi
 
-if [ -f .claude/commands/octospec-go.md ] && [ -f .claude/commands/octospec-finish.md ]; then
-  note ok "missing slash commands still installed alongside the user's own"
+if [ -f .claude/skills/octospec-workflow/SKILL.md ] && [ -f .claude/skills/octospec-init/SKILL.md ]; then
+  note ok "missing scaffolding still installed alongside the user's own command"
 else
-  note FAIL "sync skipped installing missing slash commands"; fail=1
+  note FAIL "sync skipped installing missing scaffolding"; fail=1
 fi
 
 cd "$REPO"

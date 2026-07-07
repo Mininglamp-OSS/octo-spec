@@ -3,7 +3,7 @@ type: Rule
 title: Comprehension gate
 description: Load-bearing or architectural changes require demonstrated understanding before merge.
 tags: ["comprehension", "load-bearing", "architecture"]
-timestamp: 2026-06-19T00:00:00Z
+timestamp: 2026-07-07T00:00:00Z
 # --- octospec extension fields (OKF-permitted; consumers must preserve) ---
 id: comprehension-gate
 tier: global
@@ -33,6 +33,24 @@ Before implementation, the task brief must state:
 - **Goal** — what behavior changes and why.
 - **Load-bearing list** — which existing behaviors/contracts this touches.
 - **Out of scope** — what this change deliberately does *not* touch.
+
+## Approval gate (spec sign-off before Implement)
+
+The brief must be **approved by a human before Implement may start** — sign-off
+happens at the spec boundary, not after the code exists. Approval binds to the
+brief's exact `revision`:
+
+- Each approval records the `revision` it approved, `by` whom, and `at` when
+  (in the brief's `approvals:` frontmatter).
+- Implement refuses to run unless an approval exists for the brief's **current**
+  `revision`. An agent must never approve its own brief (no self-approval).
+- A *spec-changing* iteration bumps `revision`, which invalidates the prior
+  approval — the new revision must be re-approved before Implement resumes. An
+  impl-only fix does not touch the brief and needs no re-approval.
+
+Because approval is revision-bound, it is a **machine-checkable** front gate: a
+diff whose brief has no approval matching its current revision has not been
+signed off, regardless of what the PR body claims.
 
 ## Comprehension (back)
 

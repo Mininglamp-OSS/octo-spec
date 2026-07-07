@@ -73,7 +73,7 @@ come with it — reviewable, versioned, and improvable like any other code artif
 
 **Fastest path (zero shell): paste this one line to your coding agent** (Claude Code / Codex / OpenClaw):
 
-> Read https://raw.githubusercontent.com/Mininglamp-OSS/octo-spec/v1.2.0/BOOTSTRAP.md and follow it to onboard octo-spec into this repo.
+> Read https://raw.githubusercontent.com/Mininglamp-OSS/octo-spec/v2.0.0/BOOTSTRAP.md and follow it to onboard octo-spec into this repo.
 
 It clones the pinned octo-spec, then runs the standard `octospec-init` onboarding for you. The manual steps below remain the source of truth.
 
@@ -108,12 +108,12 @@ the new files (`.octospec/`, root `.claude/`, `.github/`, and the updated
 `CLAUDE.md` / `AGENTS.md`); from here every teammate just `git pull`s.
 
 **How the loop runs from here:** ask your coding agent to "add a feature" / "fix
-this bug", or drive a single phase explicitly with a slash command
-(`/octospec-plan`, `/octospec-go`, `/octospec-check`, `/octospec-finish`). The
-4-phase loop is executed **by the agent** — there is no loop CLI to paste (see
-[The 4-phase loop](#the-4-phase-loop) below).
+this bug", or drive a single phase explicitly with one command
+(`/octospec discover|plan|implement|verify|iterate|finish`, plus `approve`). The
+6-phase loop is executed **by the agent** — there is no loop CLI to paste (see
+[The 6-phase loop](#the-6-phase-loop) below).
 
-See [`docs/CLAUDE-WORKFLOW.md`](docs/CLAUDE-WORKFLOW.md) for the Claude Code slash
+See [`docs/CLAUDE-WORKFLOW.md`](docs/CLAUDE-WORKFLOW.md) for the Claude Code
 command workflow.
 
 ## Core ideas
@@ -121,28 +121,36 @@ command workflow.
 | Capability | What it changes |
 |---|---|
 | **Auto-injected rules** | Write conventions once in `.octospec/rules/`, then let the relevant context be injected into each AI session instead of repeating yourself. |
-| **Task-centered workflow** | Keep briefs, implementation context, and status in `.octospec/tasks/` so AI work stays structured. |
-| **Project memory** | Shared journals in `.octospec/journal/` preserve what happened last time, so each new session starts with real context. |
+| **Task-centered workflow** | Keep discovery notes, briefs, and status in `.octospec/tasks/` so AI work stays structured. |
+| **Project memory** | Journals in `.octospec/journal/` preserve what happened last time, so each new session starts with real context. |
 | **Team-shared standards** | Specs live in the repo, so one person's hard-won rule benefits the whole team. |
 
-## The 4-phase loop
+## The 6-phase loop
 
 ```mermaid
 flowchart LR
-    P["Plan"] --> I["Implement"] --> V["Verify"] --> F["Finish"]
-    F -.promote learnings.-> P
+    D["Discover"] --> P["Plan"] --> A{"approved?"}
+    A -->|yes| I["Implement"] --> V["Verify"]
+    A -->|no| P
+    V -->|pass| F["Finish"]
+    V -->|fail| IT["Iterate"]
+    IT -->|impl-only| V
+    IT -->|spec-changing| P
+    F -.promote learnings.-> D
 ```
 
 ```
-Plan      → write a brief; AI may draft it from existing code, you confirm
-Implement → AI writes code with the relevant rules auto-injected (no commit)
-Verify    → diff is checked against rules + lint/type-check/tests, self-fixing
+Discover  → read-only: understand the code the task touches (writes discovery.md)
+Plan      → derive a brief from discovery; a human APPROVES its revision
+Implement → gate-checks approval, then writes code with matching rules injected
+Verify    → diff checked against rules + the repo's verify.gate, self-fixing
+Iterate   → (optional) rework; spec-changing rework re-triggers approval
 Finish    → a final check runs, then new learnings are promoted back into rules/
             in the same PR (no dead-letter; pending/ holds only unresolved ones)
 ```
 
 > **The loop is executed by your coding agent — it is not a set of pasteable CLI
-> commands.** A Claude Code slash command or the `octospec-workflow` skill drives
+> commands.** The `/octospec` command or the `octospec-workflow` skill drives
 > the agent through these phases. **octo-spec itself ships no runtime engine**: its
 > scripts only do **sync** (onboard / vendor global rules + materialize root
 > scaffolding), **lint** (OKF conformance), and **learning-reflow** at Finish
@@ -170,7 +178,7 @@ established formats that are readable by humans without tooling, parseable by
 agents without bespoke SDKs, diffable in version control, and portable across
 tools and organizations. By aligning with OKF, an `.octospec/` directory is a
 valid OKF knowledge bundle — any OKF-aware tool or agent can read it — while
-octospec adds its own workflow layer (on-demand rule injection, the 4-phase loop,
+octospec adds its own workflow layer (on-demand rule injection, the 6-phase loop,
 and review gates) on top as permitted OKF extension fields.
 
 ## Directory layout (per-repo `.octospec/`)
@@ -182,10 +190,9 @@ and review gates) on top as permitted OKF extension fields.
     <domain>.md
     _index.yaml          # rule list + inject triggers + priority
   tasks/<slug>/
-    brief.md             # goal / background / load-bearing list / acceptance
-    context.yaml         # injected rule ids + injection fingerprint
-  journal/shared/<slug>.md      # team-visible structural learnings
-  journal/by-actor/<actor>/<slug>.md  # one actor's task-level notes (in-repo)
+    discovery.md           # Discover-phase notes: what the task touches
+    brief.md               # goal / load-bearing list / acceptance / revision + approvals
+  journal/<slug>.md        # per-task record + structural learnings
   learnings/pending/<slug>.md   # ONLY unresolved learnings needing human design
   scripts/
     octospec-update-spec.sh     # Finish-phase helper: drafts a rule + promotion
@@ -247,9 +254,9 @@ need `python3` + PyYAML (see [Prerequisites](#prerequisites)).
 <summary><strong>Does octo-spec run the coding loop for me?</strong></summary>
 
 No. octo-spec ships the rules and three scripts (sync / lint / learning-reflow).
-The Plan→Implement→Verify→Finish loop is executed by your **coding agent** (via a
-Claude Code slash command or the `octospec-workflow` skill). There is no runtime
-engine and no loop CLI to paste.
+The Discover→Plan→Implement→Verify→Iterate→Finish loop is executed by your
+**coding agent** (via the `/octospec` command or the `octospec-workflow` skill).
+There is no runtime engine and no loop CLI to paste.
 </details>
 
 <details>

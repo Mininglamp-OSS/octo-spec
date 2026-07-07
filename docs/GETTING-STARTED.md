@@ -44,27 +44,37 @@ add a signpost, not a new rulebook.
 
 ---
 
-## The 4-phase loop
+## The 6-phase loop
 
 ```mermaid
 flowchart LR
-    P["Plan<br/>/octospec-plan"] --> I["Implement<br/>/octospec-go"]
-    I --> V["Verify<br/>/octospec-check"]
-    V --> F["Finish<br/>/octospec-finish"]
-    F -.learnings.-> P
+    D["Discover<br/>/octospec discover"] --> P["Plan<br/>/octospec plan"]
+    P --> G{"approved?<br/>/octospec approve"}
+    G -->|yes| I["Implement<br/>/octospec implement"]
+    G -->|no| P
+    I --> V["Verify<br/>/octospec verify"]
+    V -->|pass| F["Finish<br/>/octospec finish"]
+    V -->|fail| IT["Iterate<br/>/octospec iterate"]
+    IT -->|impl-only| V
+    IT -->|spec-changing| P
+    F -.learnings.-> D
 
-    P -.writes.-> B["brief.md"]
-    I -.injects matching rules.-> CTX["context.yaml"]
-    V -.diff vs rules + lint/test.-> FIX["self-fix"]
+    D -.writes.-> DS["discovery.md"]
+    P -.writes.-> B["brief.md (revision)"]
+    I -.injects matching rules.-> CODE["code"]
+    V -.diff vs rules + verify.gate.-> FIX["self-fix"]
     F -.->PR["PR + journal + learnings"]
 ```
 
 | Phase | Command | What happens |
 |---|---|---|
-| **Plan** | `/octospec-plan <task>` | AI drafts a task brief from the code; you confirm goal / load-bearing list / out-of-scope / acceptance. |
-| **Implement** | `/octospec-go <slug>` | AI injects the rules whose `inject_when` matches your change, writes code (no commit). |
-| **Verify** | `/octospec-check <slug>` | Diff is checked against those rules + lint/type-check/tests; self-fixes. |
-| **Finish** | `/octospec-finish <slug>` | Final check, writes a shared journal entry, stages learnings, opens a PR with Linked Spec + COMPREHENSION pre-filled. |
+| **Discover** | `/octospec discover <task>` | Read-only exploration of the code the task touches → `discovery.md`. Grounds the load-bearing list. |
+| **Plan** | `/octospec plan <slug>` | Derive the brief (Goal / load-bearing list / out-of-scope / acceptance) from discovery. Stops for approval. |
+| **Approve** | `/octospec approve <slug>` | A human signs off the brief's current revision. Implement is blocked until this exists. |
+| **Implement** | `/octospec implement <slug>` | Gate-checks approval, injects the rules whose `inject_when` matches, writes code (no commit). |
+| **Verify** | `/octospec verify <slug>` | Diff checked against those rules + acceptance; runs `manifest.verify.gate`; self-fixes. |
+| **Iterate** | `/octospec iterate <slug>` | Optional rework: impl-only → re-Verify; spec-changing → bump revision + re-approve. |
+| **Finish** | `/octospec finish <slug>` | Final check, journal entry, learnings landed in-PR, PR opened with Linked Spec + COMPREHENSION. |
 
 ---
 
@@ -73,16 +83,18 @@ flowchart LR
 ### A) Claude Code user (most common)
 
 ```
-You:  /octospec-plan add a per-room mute toggle to the group settings API
-AI:   (reads code) → writes .octospec/tasks/group-mute-toggle/brief.md
-      Goal / load-bearing: ["space", "error-response"] / out-of-scope / acceptance
-You:  looks good
-You:  /octospec-go group-mute-toggle
-AI:   injects space-isolation + error-handling rules → writes the handler + test
-You:  /octospec-check group-mute-toggle
-AI:   runs lint + go test, fixes an unlocalized error it introduced
-You:  /octospec-finish group-mute-toggle
-AI:   opens PR, body pre-filled with Linked Spec + COMPREHENSION answers
+You:  /octospec discover add a per-room mute toggle to the group settings API
+AI:   (reads code) → writes .octospec/tasks/group-mute-toggle/discovery.md
+You:  /octospec plan group-mute-toggle
+AI:   → writes brief.md (r1): Goal / load-bearing ["space","error-response"] / ...
+You:  /octospec approve group-mute-toggle
+AI:   records approval for revision 1
+You:  /octospec implement group-mute-toggle
+AI:   gate OK → injects space-isolation + error-handling rules → writes handler + test
+You:  /octospec verify group-mute-toggle
+AI:   runs manifest.verify.gate, fixes an unlocalized error it introduced
+You:  /octospec finish group-mute-toggle
+AI:   opens PR, body pre-filled with Linked Spec (r1, approved) + COMPREHENSION
 ```
 
 ### B) OpenClaw drives a local Claude Code / Codex

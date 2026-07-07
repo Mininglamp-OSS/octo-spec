@@ -9,7 +9,7 @@ description: >-
   one-time接入引导: copy the template, pin the global version, run the sync
   script, confirm the agent-instruction block landed, and self-check with lint.
   Once the repo already has a working `.octospec/`, stop using this skill — the
-  day-to-day 4-phase flow is owned by the octospec-workflow skill instead.
+  day-to-day 6-phase flow is owned by the octospec-workflow skill instead.
 ---
 
 # octospec-init (onboarding)
@@ -21,7 +21,8 @@ handful of real shell steps below, run by hand.
 
 > Relationship: **init = one-time onboarding** (this skill). Once `.octospec/`
 > exists and syncs cleanly, day-to-day work hands off to the **octospec-workflow**
-> skill (the runtime 4-phase flow: Plan, Implement, Verify, Finish). The two do
+> skill (the runtime 6-phase flow: Discover, Plan, Implement, Verify, Iterate,
+> Finish). The two do
 > not overlap — init wires the repo up, workflow drives changes afterward.
 
 ## When to run this
@@ -77,8 +78,9 @@ automatically), writes the shared agent-instruction block into the
 agent-instruction files present in the repo, AND materializes the repo-root
 scaffolding that tools only discover at the root:
 - copies `.octospec/.claude/` to the repo root `.claude/` so Claude Code finds
-  the slash commands (`/octospec-plan`, `/octospec-go`, `/octospec-check`,
-  `/octospec-finish`) and the workflow skill, and
+  the `/octospec <phase> <slug>` command (phases:
+  `discover|plan|implement|verify|iterate|finish`, plus `approve|next|status`)
+  and the workflow skill, and
 - copies `.octospec/.github/PULL_REQUEST_TEMPLATE.md` to `.github/` so GitHub
   applies the PR template (the body the Finish phase pre-fills).
 
@@ -124,6 +126,6 @@ so this skill itself is out of scope).
 ## After onboarding
 
 Once the steps above pass, this repo is onboarded. Hand day-to-day coding back to
-the **octospec-workflow** skill, which runs the 4-phase flow for each non-trivial
+the **octospec-workflow** skill, which runs the 6-phase flow for each non-trivial
 change. Re-run step 3 (sync) any time you bump the pin in `manifest.yaml` — it is
 idempotent.

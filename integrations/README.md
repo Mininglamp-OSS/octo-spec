@@ -12,7 +12,7 @@ under `integrations/` changes that contract:
 - Adapters here only **orchestrate and route**. They detect intent, locate the
   repo, launch a coding agent, and check completion.
 - The actual engine is still an external coding agent (e.g. Claude Code), not
-  octo-spec. The 4-phase reasoning is the agent's job, exactly as in the manual
+  octo-spec. The 6-phase reasoning is the agent's job, exactly as in the manual
   flow.
 
 So "no runtime engine" remains true: integrations are thin glue, the engine is

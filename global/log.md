@@ -5,6 +5,28 @@ Change history for the global ("constitution") rules, following the
 change-log convention (§7). Newest entries first. Each entry records
 Creation / Update / Deprecation of a knowledge unit.
 
+## 2026-07-07
+
+- **Update** — Loop v2: the workflow went from a 4-phase loop
+  (Plan→Implement→Verify→Finish) to a **6-phase loop**
+  (Discover→Plan→Implement→Verify→Iterate→Finish) with a **brief approval gate**.
+  Added an "Approval gate" section to `comprehension-gate.md`: each brief
+  `revision` must carry a matching human approval before Implement runs; a
+  spec-changing Iterate bumps the revision and invalidates the prior approval
+  (impl-only rework does not). Bumped `comprehension-gate` timestamp.
+- **Update** — Replaced the four `octospec-{plan,go,check,finish}` slash commands
+  with a single router command `/octospec <phase> <slug>`
+  (`discover|plan|implement|verify|iterate|finish` + `approve|next|status`); the
+  `octospec-workflow` skill is now the single source of truth for phase steps.
+  Rewrote the starter templates (`_brief.template.md` gains `revision`/`approvals`
+  /Iteration Log; new `_discovery.template.md`) and dropped the unused injection
+  budget / fingerprint / `context.yaml` machinery.
+- **Update** — Made the verify step **language-agnostic**: repos declare their gate
+  in `manifest.yaml` `verify.{gate,tools}` (Go/TS/Python/…); the octo-code adapter
+  derives `--allowedTools` and the completion gate from it instead of hardcoding
+  Python, and adds an **approval pause** between Plan and Implement. Bumped
+  `VERSION`/pins to `2.0.0`.
+
 ## 2026-06-22
 
 - **Creation** — Added `BOOTSTRAP.md` one-liner onboarding entry (remote-doc

@@ -65,11 +65,23 @@ push past it.
 Run Claude Code in headless mode with structured output. This is the load-bearing
 choice: it gives a real completion signal and is resumable.
 
+The `--allowedTools` list is **derived, not hardcoded**: a constant core plus the
+target repo's own verify toolchain from `manifest.yaml` `verify.tools` (so a Go or
+TS repo is not gated behind a Python assumption). Read `verify.tools` and expand
+each into `Bash(<tool> *)`:
+
 ```bash
+# constant core
+TOOLS="Read,Edit,Write,Bash(git *),Bash(gh *)"
+# derive from the repo's declared verify toolchain (verify.tools in manifest.yaml)
+for t in $(read_verify_tools "<repo>/.octospec/manifest.yaml"); do
+  TOOLS="$TOOLS,Bash($t *)"
+done   # Go → Bash(go *),Bash(gofmt *) ; TS → Bash(pnpm *),Bash(npx *) ; etc.
+
 claude -p "<task prompt>" \
   --output-format json \
   --permission-mode acceptEdits \
-  --allowedTools "Read,Edit,Write,Bash(git *),Bash(gh *),Bash(python3 *),Bash(pytest *)" \
+  --allowedTools "$TOOLS" \
   --max-turns 40 \
   > run.json 2>run.err
 ```
@@ -84,7 +96,38 @@ Notes:
   would blind the agent to the standard.
 - **cwd** is the per-task worktree from preflight.
 - The task prompt must tell the agent to read `CLAUDE.md` and run the full
-  4-phase loop including the Finish-phase learning reflow.
+  6-phase loop (Discover → Plan → Implement → Verify → Iterate → Finish),
+  **pausing after Plan for the approval gate** (§B2) and including the
+  Finish-phase learning reflow.
+
+---
+
+## B2. Approval pause (between Plan and Implement)
+
+The brief must be **human-approved** before Implement. In an unattended run there
+is no human at the keyboard, so the flow is **not** one continuous engine call —
+it splits around a real pause:
+
+1. **Plan half.** The engine runs Discover + Plan and STOPS after writing
+   `.octospec/tasks/<slug>/brief.md` (revision 1). Instruct it in the task prompt
+   to end the turn there without implementing. Post the brief back to the
+   originating thread: *"Brief ready (r1). Reply `approve` to continue, or reply
+   with changes."*
+2. **Human decision.** Wait for the originator's reply. Do not auto-approve — the
+   agent may not approve its own brief (comprehension gate, no self-approval).
+3. **Approve + resume.** On `approve`, the orchestrator writes the approval record
+   into the brief's `approvals:` frontmatter (`revision:` = current, `by:` = the
+   originator's identity, `at:` = ISO8601 UTC), then `--resume "$sid"` with a
+   prompt to continue from Implement. On a change request, resume the Plan half
+   instead and re-post the updated brief.
+4. **Re-pause on revision bump.** If a later Iterate is *spec-changing*, the brief
+   `revision` bumps and the prior approval is stale. Pause again and get the new
+   revision approved before Implement resumes. Impl-only iterations do not bump
+   the revision and need no re-approval.
+
+> This means octo-code is **not** "one message → PR" — it is "one message → brief
+> → human approve → PR". That pause is the point: sign-off happens at the spec
+> boundary, not after the code already exists.
 
 ---
 
@@ -101,8 +144,11 @@ verify against artifacts, then resume the same session if work remains.
    ```
 2. **Artifact checklist** (the real definition of done — verify all that the task
    required):
+   - the brief's current `revision` is approved (`approvals[]` has a matching
+     entry) — an unapproved brief means Implement should never have run;
    - expected branch exists and is pushed;
-   - tests green (`python3 -m pytest -q` or the repo's gate);
+   - the repo gate is green: run the commands in `manifest.yaml` `verify.gate`
+     (fall back to the repo's documented gate if no `verify:` block);
    - for rule-producing tasks: `.octospec/rules/<id>.md` **and** its
      `rules/_index.yaml` entry exist (learning landed, not stranded in
      `learnings/pending/`);
@@ -180,7 +226,8 @@ So the install flow is **two steps, the second automated**:
    <skill-dir>/shared/octo-code-doctor.sh --repo <path>   # + require repo onboarding
    ```
    The doctor checks each guardrail precondition (claude CLI, headless auth smoke,
-   git, gh auth, jq, optional python/pytest). With `--repo`, the target repo's
+   git, gh auth, jq, optional python3, and — with `--repo` — the target repo's
+   declared `verify.tools`). With `--repo`, the target repo's
    `.octospec` onboarding becomes a **required** check: a repo with no `.octospec/`
    or no manifest pin fails (exit 1), so an automated install flow never treats a
    non-onboarded repo as ready. The doctor prints `✅ / ⚠️ / ❌` per item with a
