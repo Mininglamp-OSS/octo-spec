@@ -98,7 +98,13 @@ Notes:
 - The task prompt must tell the agent to read `CLAUDE.md` and run the full
   6-phase loop (Discover → Plan → Implement → Verify → Iterate → Finish),
   **pausing after Plan for the approval gate** (§B2) and including the
-  Finish-phase learning reflow.
+  Finish-phase learning reflow. Discover creates the task branch and commits the
+  spec (discovery + brief) onto it — here the per-task **worktree branch from
+  §A.4 IS that branch**, so the spec rides into the PR with no manual copy.
+- **Verify must be independent.** The session that wrote the code must not
+  self-certify. Run Verify as a **separate `claude -p` review** (fresh session,
+  read-only tools) that checks the diff against the brief's Acceptance + injected
+  rules + Out of scope, in addition to the repo `verify.gate`. See §C.
 
 ---
 
@@ -117,7 +123,9 @@ it splits around a real pause:
    agent may not approve its own brief (comprehension gate, no self-approval).
 3. **Approve + resume.** On `approve`, the orchestrator writes the approval record
    into the brief's `approvals:` frontmatter (`revision:` = current, `by:` = the
-   originator's identity, `at:` = ISO8601 UTC), then `--resume "$sid"` with a
+   originator's identity, `at:` = ISO8601 UTC) **and commits it**
+   (`approve: <slug> r<rev>`) on the task branch — parity with local `/octospec
+   approve`, so the sign-off is in git history. Then `--resume "$sid"` with a
    prompt to continue from Implement. On a change request, resume the Plan half
    instead and re-post the updated brief.
 4. **Re-pause on revision bump.** If a later Iterate is *spec-changing*, the brief
@@ -146,13 +154,18 @@ verify against artifacts, then resume the same session if work remains.
    required):
    - the brief's current `revision` is approved (`approvals[]` has a matching
      entry) — an unapproved brief means Implement should never have run;
+   - **Verify ran as an independent pass** — a review from a fresh session
+     (not the implementing session) checked the diff against the brief's
+     Acceptance; a "done" from the same session that wrote the code is not
+     sufficient;
    - expected branch exists and is pushed;
    - the repo gate is green: run the commands in `manifest.yaml` `verify.gate`
      (fall back to the repo's documented gate if no `verify:` block);
    - for rule-producing tasks: `.octospec/rules/<id>.md` **and** its
      `rules/_index.yaml` entry exist (learning landed, not stranded in
      `learnings/pending/`);
-   - journal entry written under `.octospec/journal/`;
+   - a **slim** journal entry written under `.octospec/journal/` (one-line result
+     + `## Learning`; no per-task log.md);
    - OKF lint passes (`<octo-spec>/scripts/octospec-lint.sh .`);
    - **PR opened** (`gh pr view` succeeds).
 3. If anything is missing, **resume** with a focused continuation prompt naming

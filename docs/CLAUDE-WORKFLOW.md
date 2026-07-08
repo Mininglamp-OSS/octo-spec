@@ -62,16 +62,29 @@ make it *binding*.
 
 | Command | Does | Writes |
 |---|---|---|
-| `/octospec discover <task>` | Read-only exploration of the code the task touches. | `tasks/<slug>/discovery.md` |
-| `/octospec plan <slug>` | Derive a brief from discovery; stop for human approval. | `tasks/<slug>/brief.md` (revision 1) |
-| `/octospec approve <slug>` | Record human sign-off of the brief's current revision. | approval entry in `brief.md` |
-| `/octospec implement <slug>` | Gate-check approval, inject matching rules, write code (no commit). | (code) |
-| `/octospec verify <slug>` | Check the diff against injected rules + Acceptance; run `verify.gate`; self-fix. | (validation only) |
+| `/octospec discover <task>` | Create the task branch; read-only exploration of the code the task touches. | `tasks/<slug>/discovery.md` (committed) |
+| `/octospec plan <slug>` | Derive a brief from discovery; commit it; stop for human approval. | `tasks/<slug>/brief.md` (revision 1) |
+| `/octospec approve <slug>` | Record + commit human sign-off of the brief's current revision. | approval entry in `brief.md` |
+| `/octospec implement <slug>` | Gate-check approval, inject matching rules, write code on the branch. | (code) |
+| `/octospec verify <slug>` | Dispatch an **independent reviewer** (fresh context) vs injected rules + Acceptance + Out of scope; run `verify.gate`. No self-review. | (validation only) |
 | `/octospec iterate <slug>` | Disciplined rework: impl-only → re-Verify; spec-changing → bump revision + re-approve. | `brief.md` Iteration Log (spec-changing only) |
-| `/octospec finish <slug>` | Final gate, journal entry, land learnings in-PR, open a PR (Linked Spec + COMPREHENSION). | `journal/<slug>.md` |
+| `/octospec finish <slug>` | Final gate, slim journal (result + Learning), land learnings in-PR, open a PR (Linked Spec + COMPREHENSION). | `journal/<slug>.md` |
+| `/octospec autopilot <slug>` | After approval, run Implement → Verify → (impl-only Iterate ≤2) → Finish unattended, stopping at "PR opened". | (as above) |
 
 `/octospec next <slug>` runs the inferred next phase; `/octospec status <slug>`
 reports progress read-only.
+
+Because the branch is created at Discover and the spec is committed onto it, the
+PR opened at Finish already contains discovery + brief + approval — no manual copy.
+
+## Autopilot
+
+Once a brief is approved, no new *human* decision arises until the PR itself, so
+`/octospec autopilot <slug>` runs the mechanical tail — Implement → Verify →
+(impl-only Iterate, ≤2 retries) → Finish — unattended, stopping at "PR opened".
+It **returns to the human** on a spec-changing failure (revision bump → the new
+spec needs re-approval) or when impl-only retries are exhausted, and it **never
+auto-merges** — the PR review is the second human gate.
 
 ## Approval gate
 

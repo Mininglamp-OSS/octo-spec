@@ -59,22 +59,23 @@ flowchart LR
     IT -->|spec-changing| P
     F -.learnings.-> D
 
-    D -.writes.-> DS["discovery.md"]
+    D -.branch + writes.-> DS["discovery.md (committed)"]
     P -.writes.-> B["brief.md (revision)"]
     I -.injects matching rules.-> CODE["code"]
-    V -.diff vs rules + verify.gate.-> FIX["self-fix"]
-    F -.->PR["PR + journal + learnings"]
+    V -.independent reviewer + verify.gate.-> FIX["reviewer findings"]
+    F -.->PR["PR + slim journal + learnings"]
 ```
 
 | Phase | Command | What happens |
 |---|---|---|
-| **Discover** | `/octospec discover <task>` | Read-only exploration of the code the task touches → `discovery.md`. Grounds the load-bearing list. |
-| **Plan** | `/octospec plan <slug>` | Derive the brief (Goal / load-bearing list / out-of-scope / acceptance) from discovery. Stops for approval. |
-| **Approve** | `/octospec approve <slug>` | A human signs off the brief's current revision. Implement is blocked until this exists. |
-| **Implement** | `/octospec implement <slug>` | Gate-checks approval, injects the rules whose `inject_when` matches, writes code (no commit). |
-| **Verify** | `/octospec verify <slug>` | Diff checked against those rules + acceptance; runs `manifest.verify.gate`; self-fixes. |
+| **Discover** | `/octospec discover <task>` | Create the task branch; read-only exploration of the code the task touches → `discovery.md` (committed). Grounds the load-bearing list. |
+| **Plan** | `/octospec plan <slug>` | Derive the brief (Goal / load-bearing list / out-of-scope / acceptance) from discovery; commit it. Stops for approval. |
+| **Approve** | `/octospec approve <slug>` | A human signs off the brief's current revision (recorded + committed). Implement is blocked until this exists. |
+| **Implement** | `/octospec implement <slug>` | Gate-checks approval, injects the rules whose `inject_when` matches, writes code on the branch. |
+| **Verify** | `/octospec verify <slug>` | An **independent reviewer** (fresh context) checks the diff vs those rules + acceptance + out-of-scope; runs `manifest.verify.gate`. No self-review. |
 | **Iterate** | `/octospec iterate <slug>` | Optional rework: impl-only → re-Verify; spec-changing → bump revision + re-approve. |
-| **Finish** | `/octospec finish <slug>` | Final check, journal entry, learnings landed in-PR, PR opened with Linked Spec + COMPREHENSION. |
+| **Finish** | `/octospec finish <slug>` | Final check, slim journal (result + Learning), learnings landed in-PR, PR opened with Linked Spec + COMPREHENSION. |
+| **Autopilot** | `/octospec autopilot <slug>` | After approval, runs Implement → Verify → (impl-only Iterate ≤2) → Finish unattended, stopping at "PR opened". Never auto-merges. |
 
 ---
 
@@ -92,9 +93,19 @@ AI:   records approval for revision 1
 You:  /octospec implement group-mute-toggle
 AI:   gate OK → injects space-isolation + error-handling rules → writes handler + test
 You:  /octospec verify group-mute-toggle
-AI:   runs manifest.verify.gate, fixes an unlocalized error it introduced
+AI:   dispatches an independent reviewer vs Acceptance + rules, runs manifest.verify.gate
 You:  /octospec finish group-mute-toggle
 AI:   opens PR, body pre-filled with Linked Spec (r1, approved) + COMPREHENSION
+```
+
+Once the brief is approved, the middle phases are mechanical — collapse them with
+autopilot:
+
+```
+You:  /octospec approve group-mute-toggle
+You:  /octospec autopilot group-mute-toggle
+AI:   Implement → independent Verify → (impl-only Iterate ≤2) → Finish → PR opened
+      (stops for you only if the spec must change, or retries run out)
 ```
 
 ### B) OpenClaw drives a local Claude Code / Codex

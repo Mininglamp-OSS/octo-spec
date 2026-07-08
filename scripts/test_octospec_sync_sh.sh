@@ -362,6 +362,27 @@ else
   note FAIL "repo-root .claude/skills/ missing after sync"; fail=1
 fi
 
+# v2.1: the router command carries the autopilot phase.
+if grep -q "autopilot" .claude/commands/octospec.md; then
+  note ok "router command exposes the autopilot phase"
+else
+  note FAIL "autopilot phase missing from materialized octospec command"; fail=1
+fi
+
+# v2.1: the slim-journal template ships in the skeleton.
+if [ -f .octospec/journal/_journal.template.md ]; then
+  note ok "journal template present in .octospec/journal/"
+else
+  note FAIL ".octospec/journal/_journal.template.md missing"; fail=1
+fi
+
+# v2.1: the per-task log.md is gone — no phase should reference writing it.
+if grep -rq "\.octospec/log\.md" .octospec/.claude .octospec/scripts; then
+  note FAIL "dangling per-task .octospec/log.md reference survived"; fail=1
+else
+  note ok "no per-task log.md reference in skill/command/scripts"
+fi
+
 # GAP-3: PR template installed at the repo root where GitHub looks for it.
 if [ -f .github/PULL_REQUEST_TEMPLATE.md ]; then
   note ok "PR template materialized to repo-root .github/PULL_REQUEST_TEMPLATE.md"

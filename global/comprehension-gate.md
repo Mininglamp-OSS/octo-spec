@@ -3,7 +3,7 @@ type: Rule
 title: Comprehension gate
 description: Load-bearing or architectural changes require demonstrated understanding before merge.
 tags: ["comprehension", "load-bearing", "architecture"]
-timestamp: 2026-07-07T00:00:00Z
+timestamp: 2026-07-08T00:00:00Z
 # --- octospec extension fields (OKF-permitted; consumers must preserve) ---
 id: comprehension-gate
 tier: global
@@ -51,6 +51,16 @@ brief's exact `revision`:
 Because approval is revision-bound, it is a **machine-checkable** front gate: a
 diff whose brief has no approval matching its current revision has not been
 signed off, regardless of what the PR body claims.
+
+## Independent verify (no self-review)
+
+Verify is a **separate, fresh-context pass** — the same context that wrote the
+code must not certify its own work (the same "no self-approval" principle that
+guards the front gate also guards the back). An independent reviewer (a
+fresh-context subagent such as `code-reviewer`/`verifier`, or a separate review
+invocation) checks the diff against the brief's **Acceptance**, the injected
+rules, and the **Out of scope** list — in addition to the repo's automated gate.
+A bare "done" from the implementing context is not verification.
 
 ## Comprehension (back)
 

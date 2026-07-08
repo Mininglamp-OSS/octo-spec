@@ -5,6 +5,30 @@ Change history for the global ("constitution") rules, following the
 change-log convention (§7). Newest entries first. Each entry records
 Creation / Update / Deprecation of a knowledge unit.
 
+## 2026-07-08
+
+- **Update** — Loop v2 dogfood iteration (from 7-slice field feedback), same
+  unreleased `2.0.0`:
+  - **Autopilot** — added `/octospec autopilot <slug>`: after approval, runs
+    Implement → Verify → (impl-only Iterate, ≤2 retries) → Finish unattended,
+    stopping at "PR opened". Returns to the human on a spec-changing failure
+    (revision bump → re-approval) or exhausted retries; never auto-merges.
+  - **Independent verify** — Verify is now an **independent, fresh-context pass**
+    (a `code-reviewer`/`verifier` subagent locally, a separate `claude -p` review
+    for octo-code), not the implementing context self-certifying. Added an
+    "Independent verify (no self-review)" section to `comprehension-gate.md` and
+    bumped its timestamp.
+  - **Spec rides the branch** — Discover now creates the task branch and commits
+    discovery/brief/approval onto it, so the PR opened at Finish already contains
+    the spec (eliminates the manual `cp` into the worktree PR).
+  - **Removed the per-task `log.md`** — a structural rebase-conflict magnet whose
+    content duplicated `git log` (timeline) and the journal (detail). Dropped its
+    write from Finish and the `rules/log.md` reference from
+    `octospec-update-spec.sh`.
+  - **Slim journal** — journal reduced to a one-line result + `## Learning` (its
+    only unique value, the raw material for rules). Added
+    `journal/_journal.template.md` to bake the shape into the scaffold.
+
 ## 2026-07-07
 
 - **Update** — Loop v2: the workflow went from a 4-phase loop

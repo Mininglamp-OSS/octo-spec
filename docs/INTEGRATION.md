@@ -54,7 +54,7 @@ can't merge without passing Layer 2.
 
 | Scenario | Who writes the code | Reads instructions from | Auto? | Notes |
 |---|---|---|---|---|
-| **1. Local Claude Code** | Claude Code in the checkout | `CLAUDE.md` + `.octospec/` | ✅ auto | Plus the `/octospec <phase>` command |
+| **1. Local Claude Code** | Claude Code in the checkout | `CLAUDE.md` + `.octospec/` | ✅ auto | Plus the `/octospec <phase>` command (incl. `autopilot`) |
 | **2b. Orchestrator → local Claude Code / Codex** | CC / Codex spawned in the checkout | `CLAUDE.md` / `AGENTS.md` | ✅ auto | As long as the spawn cwd is the repo root |
 | **2c. Orchestrator → dispatch system** | Agent runs CC/Codex in a checkout | `CLAUDE.md` / `AGENTS.md` + brief | ✅ auto | Dispatch brief adds a "read `.octospec`" pointer; dogfooded on `octo-server` (issue #344 → PR #420) |
 | **2a. Orchestrator writes code directly** | The orchestrator itself (not checkout-anchored) | — | ⚠️ **not auto** | See decision below |

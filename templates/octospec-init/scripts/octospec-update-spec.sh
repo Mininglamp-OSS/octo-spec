@@ -348,7 +348,7 @@ $LEARNING
 - [ ] load_bearing/priority/tier are justified.
 - [ ] Belongs in rules/ (binds everyone) vs journal/by-actor/ (one actor's note).
 - [ ] Land the rule now: copy draft into \`.octospec/rules/$RULE_ID.md\`, add the
-      \`rules/_index.yaml\` entry, log it in \`rules/log.md\`, drop the draft.
+      \`rules/_index.yaml\` entry, drop the draft.
 EOF
   exit 0
 fi
