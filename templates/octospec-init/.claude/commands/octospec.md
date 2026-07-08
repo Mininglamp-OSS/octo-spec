@@ -19,24 +19,31 @@ execute that phase exactly as the `octospec-workflow` skill defines it.
 - `plan <slug>` — **Plan**: derive `.octospec/tasks/<slug>/brief.md` from the
   discovery (Goal / Load-bearing list / Out of scope / Acceptance). Set/keep
   `revision`, commit the brief. Show it and stop for human approval.
-- `implement <slug>` — **Implement**: FIRST check the approval gate (see below);
-  only then inject matching rules and write code on the task branch.
+- `implement <slug>` — **Implement (TDD)**: FIRST check the approval gate (see
+  below); then inject matching rules and follow **Red → Green → Refactor** — write
+  the approved Acceptance as failing tests and commit them (`red: <slug>`) BEFORE
+  production code, then write the minimal code to green, then refactor staying
+  green. Do not edit tests to fake a pass.
 - `verify <slug>` — **Verify**: dispatch an **independent reviewer** (fresh
   context — `code-reviewer`/`verifier`/`/review`) to check the diff against the
-  brief's Acceptance + injected rules + Out of scope, then run
-  `manifest.verify.gate`. The implementing context must NOT self-certify.
+  brief's Acceptance + injected rules + Out of scope, **confirm the `red:` commit
+  precedes the code and its tests encode the Acceptance** (green didn't weaken
+  them), then run `manifest.verify.gate`. The implementing context must NOT
+  self-certify.
 - `iterate <slug>` — **Iterate** (optional): disciplined rework after a failed
-  Verify. Impl-only fix → back to Verify. Spec-changing → bump the brief
-  `revision`, add an Iteration Log entry, commit, and go back through the approval
-  gate.
+  Verify. Impl/test-only fix → back to Verify (a test fix is its own explained
+  commit). Spec-changing (incl. "an Acceptance item can't be a valid failing
+  test") → bump the brief `revision`, add an Iteration Log entry, commit, and go
+  back through the approval gate.
 - `finish <slug>` — **Finish**: final gate, slim journal entry (one-line result +
   `## Learning`, no per-task log.md), land any reusable learning in this same PR,
   open the PR (Linked Spec + COMPREHENSION). The branch already carries the spec.
-- `autopilot <slug>` — **Autopilot**: after approval, run Implement → Verify →
-  (impl-only Iterate, ≤2 retries) → Finish **unattended**, stopping at "PR
-  opened". Stops and returns to the human on a spec-changing failure (revision
-  bump → needs re-approval) or when impl-only retries are exhausted. Refuses if
-  the current revision is not approved. Never auto-merges.
+- `autopilot <slug>` — **Autopilot**: after approval, run Implement (Red→Green→
+  Refactor) → Verify → (impl/test-only Iterate, ≤2 retries) → Finish
+  **unattended**, stopping at "PR opened". Red still commits before code. Stops
+  and returns to the human on a spec-changing failure (revision bump → needs
+  re-approval) or when retries are exhausted. Refuses if the current revision is
+  not approved. Never auto-merges.
 
 ## Gate + helpers
 

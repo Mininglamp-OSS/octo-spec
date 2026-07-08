@@ -71,13 +71,15 @@ questions, discussions, or product decisions.
    - run the full 6-phase loop: Discover (create the task branch, write + commit
      `.octospec/tasks/<slug>/discovery.md`) → Plan (write + commit
      `.octospec/tasks/<slug>/brief.md`, revision 1) → **STOP for the approval
-     gate** → Implement → **Verify as an independent pass** (a fresh-session
-     review vs the brief's Acceptance, plus `manifest.verify.gate` green — not the
-     implementing session self-certifying) → Iterate if needed → **Finish incl.
-     learning reflow** (slim journal entry — one-line result + `## Learning`, no
-     per-task log.md; if the task produced a reusable learning, land it in
-     `.octospec/rules/<id>.md` + `rules/_index.yaml` *in this same PR*, not
-     stranded in `learnings/pending/`);
+     gate** → Implement **TDD-style: commit failing Acceptance tests
+     (`red: <slug>`) before production code, then green, then refactor** →
+     **Verify as an independent pass** (a fresh-session review vs the brief's
+     Acceptance + the `red:`-before-code trail, plus `manifest.verify.gate` green
+     — not the implementing session self-certifying) → Iterate if needed →
+     **Finish incl. learning reflow** (slim journal entry — one-line result +
+     `## Learning`, no per-task log.md; if the task produced a reusable learning,
+     land it in `.octospec/rules/<id>.md` + `rules/_index.yaml` *in this same PR*,
+     not stranded in `learnings/pending/`);
    - create branch `<type>/<slug>`, conventional commit (git author = the
      configured bot identity), push, open a PR filling the PR template
      (Linked Spec + COMPREHENSION for load-bearing changes).
@@ -92,11 +94,12 @@ questions, discussions, or product decisions.
 
 5. **Completion check + resume** (`shared/octo-code-core.md` §C). Parse the JSON
    (`session_id`, `terminal_reason`, `total_cost_usd`), then verify the artifact
-   checklist (brief revision approved, **Verify ran independently**, branch
-   pushed, `verify.gate` green, rule+index landed if applicable, slim journal
-   written, OKF lint OK, **PR opened**). If anything is missing, `--resume
-   <session_id>` with a focused prompt naming the gaps. Cap resumes; open the PR
-   directly as a fallback. **Never trust a bare "done."**
+   checklist (brief revision approved, **Verify ran independently**, **TDD trail
+   intact — `red:` commit precedes the code**, branch pushed, `verify.gate` green,
+   rule+index landed if applicable, slim journal written, OKF lint OK, **PR
+   opened**). If anything is missing, `--resume <session_id>` with a focused prompt
+   naming the gaps. Cap resumes; open the PR directly as a fallback. **Never trust
+   a bare "done."**
 
 6. **Report back** in the originating octo thread: PR URL, test result, cost
    (`total_cost_usd`), and (if a rule was reflowed) which rule landed. Then

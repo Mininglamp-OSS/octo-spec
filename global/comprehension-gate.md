@@ -62,6 +62,19 @@ invocation) checks the diff against the brief's **Acceptance**, the injected
 rules, and the **Out of scope** list — in addition to the repo's automated gate.
 A bare "done" from the implementing context is not verification.
 
+### Red-first: the Acceptance is a pre-registered failing test
+
+For a behavior change, the approved Acceptance is not verified after the fact — it
+is **committed as a failing test before the production code** (TDD Red). This
+turns the front gate's promise into a git-provable anchor: the reviewer confirms a
+`red:` commit precedes the code, its tests actually failed on the
+pre-implementation tree and **encode the approved Acceptance**, and the passing
+diff did not quietly weaken them. A change that genuinely cannot carry a failing
+test (pure refactor, UI/visual, config/dependency bump) is exempt only via an
+explicit `N/A(test): <reason>` in the brief — a silent skip is a gate failure.
+This is what makes the independent Verify objective rather than a matter of the
+reviewer's taste.
+
 ## Comprehension (back)
 
 The PR body must answer three questions — to load-bearing substance, not

@@ -31,17 +31,22 @@ lint-only fix, a pure config or dependency bump. Just make those directly.
 ## The loop
 
 ```
-Discover → Plan → [approval gate] → Implement → Verify ──pass──→ Finish
-   │          ▲                          ▲            │
- branch       │                          │          fail
- + spec       │                          │            ▼
- commits      └───── Iterate (spec-changing) ◄── Iterate (impl-only)
+Discover → Plan → [approval gate] → Implement ─────────→ Verify ──pass──→ Finish
+   │          ▲                     (Red→Green→Refactor)     │
+ branch       │                          ▲                 fail
+ + spec       │                          │                   ▼
+ commits      └──── Iterate (spec-changing) ◄── Iterate (impl/test-only)
 ```
 
 Run the phases in order. Each maps to `/octospec <phase> <slug>`, which the user
 can also invoke manually. **Two things need a human: `approve` (the scope
 sign-off) and merging the PR. Everything between them can run unattended** — see
 **Autopilot** below.
+
+Implement follows **TDD (Red → Green → Refactor)** for behavior changes: the
+approved Acceptance is first written as a *failing* test and committed **before**
+any production code (Red), so the pass later proves the behavior, not the author's
+say-so. See phase 3.
 
 The task's own **git branch** is created at Discover and carries every artifact:
 discovery, brief, the approval record, and the code all land as commits on it, so
@@ -70,7 +75,12 @@ the PR opened at Finish already contains the spec — nothing is copied by hand.
   - **Load-bearing list** — derive it from `discovery.md`. Use the same tags as
     `.octospec/rules/_index.yaml` `inject_when.touches` where they apply.
   - **Out of scope** — what this deliberately does NOT touch.
-  - **Acceptance** — machine-checkable where possible.
+  - **Acceptance** — each item stated so it can become a **failing test** in
+    Implement's Red step. For a behavior change this is the default; an item that
+    genuinely cannot have an automated failing test (pure refactor, UI/visual,
+    config/dependency bump) must be marked `N/A(test)` with a one-line reason.
+    That reason is the honest exemption — silently skipping the test is not
+    allowed, and it is what the independent Verify checks against.
 - **Commit the brief** (`plan: <slug> r1`).
 - **Show the brief and stop. It must be human-approved before Implement.**
 
@@ -93,7 +103,7 @@ approvals:
   approval** — that would defeat the comprehension gate (no self-approval).
 - Implement checks this gate as its first action (below).
 
-### 3. Implement
+### 3. Implement — TDD (Red → Green → Refactor)
 - **Gate check first.** Read the brief's `revision` and `approvals`. Confirm an
   entry exists with `revision` == the current `revision`. If not, **refuse**:
   tell the user to review the brief and run `/octospec approve <slug>` (or
@@ -103,7 +113,28 @@ approvals:
   will touch, OR its `inject_when.touches` tag is in the brief's load-bearing
   list. A repo-tier rule overrides a global one with the same id. **Read the full
   text of every matching rule and follow it; do load-bearing rules first.**
-- Write the code following those rules, committing on the task branch.
+- **Red — write the failing tests first.** Translate each testable Acceptance
+  item into a test and run it. Confirm it fails **for the right reason** (the
+  behavior is missing / wrong — not a compile error, typo, or missing import). A
+  test that errors out instead of asserting-and-failing is not a valid Red.
+  **Commit the failing tests on their own** (`red: <slug>`) *before* writing any
+  production code — this red commit is the pre-registered, git-provable anchor the
+  independent Verify checks against.
+  - Acceptance items marked `N/A(test)` in the brief have no Red test; do not
+    invent a hollow one. If, while writing tests, you find an Acceptance item is
+    wrong or untestable as written, that is a **spec-changing** signal → Iterate
+    (do not quietly weaken it).
+- **Green — minimal code to pass.** Write the least production code that turns the
+  red tests green, following the injected rules. Do **not** edit the tests to make
+  them pass; if a test itself was wrong, that is Iterate (test-only), and the fix
+  is a separate, explained commit — not a silent weakening buried in the green
+  diff.
+- **Refactor — clean up while staying green.** With the tests green, improve the
+  code (naming, duplication, structure) and re-run the gate to confirm it stays
+  green. No behavior change here. (Refactor is part of Implement, not a separate
+  phase.)
+- Commit the production code + refactor on the task branch (after the `red:`
+  commit).
 
 ### 4. Verify — an independent pass, not self-review
 Verify is a **separate, fresh-context review**, not the implementing context
@@ -115,6 +146,14 @@ active context" rule). The context that wrote the code must NOT self-certify.
   brief's **Acceptance**, the injected rules, and the **Out of scope** list. It
   checks the diff against each — tracing load-bearing paths, not just the happy
   path — and confirms nothing in Out of scope was touched.
+- **Check the TDD trail.** The reviewer confirms, using git history, that:
+  - a `red:` commit exists **before** the production code, and its tests actually
+    failed on the pre-implementation tree;
+  - those tests genuinely **encode the approved Acceptance** (not a weaker or
+    tautological version);
+  - the green diff did **not** edit the tests to fake a pass (any test change is a
+    separately explained Iterate commit, not smuggled into Green);
+  - every non-`N/A(test)` Acceptance item has a corresponding test.
 - **Run the gate.** Run this repo's gate: the commands in `manifest.yaml`
   `verify.gate`. If no `verify:` block is present, fall back to the gates named in
   CLAUDE.md / AGENTS.md (lint / type-check / tests).
@@ -123,15 +162,18 @@ active context" rule). The context that wrote the code must NOT self-certify.
 
 ### 5. Iterate (optional)
 Only when Verify failed or surfaced a gap. Decide the kind of rework:
-- **Impl-only** (the brief was right; the code was wrong): fix the code and go
-  back to Verify. Do NOT touch the brief. Do NOT bump `revision`. Under Autopilot
-  this retries at most **twice** before stopping for a human.
+- **Impl/test-only** (the brief was right; the code or a test was wrong): fix it
+  and go back to Verify. A test fix must be its **own commit** with a one-line
+  reason (so it is never mistaken for weakening a test to fake green). Do NOT
+  touch the brief. Do NOT bump `revision`. Under Autopilot this retries at most
+  **twice** before stopping for a human.
 - **Spec-changing** (the load-bearing list, goal, scope, or acceptance was wrong
-  or incomplete): update the brief, **bump `revision`**, add an **Iteration Log**
-  entry stating the semantic reason (not the diff), commit it, then go back
-  through the **approval gate** — the bump invalidated the prior approval, so the
-  new revision must be re-approved before Implement resumes. Under Autopilot this
-  **stops and returns to the human** (a new decision is required).
+  or incomplete — including "an Acceptance item can't be made a valid failing
+  test"): update the brief, **bump `revision`**, add an **Iteration Log** entry
+  stating the semantic reason (not the diff), commit it, then go back through the
+  **approval gate** — the bump invalidated the prior approval, so the new revision
+  must be re-approved before Implement resumes. Under Autopilot this **stops and
+  returns to the human** (a new decision is required).
 
 ### 6. Finish
 - Run the `verify.gate` once more.
@@ -158,15 +200,18 @@ Only when Verify failed or surfaced a gap. Decide the kind of rework:
 ## Autopilot
 
 `/octospec autopilot <slug>` runs the mechanical tail of the loop unattended:
-**Implement → Verify → (impl-only Iterate, ≤2 retries) → Finish (open PR)**. It
-exists because, once the brief is approved, no new *human* decision arises until
-the PR itself — the middle phases are just "放行".
+**Implement (Red→Green→Refactor) → Verify → (impl/test-only Iterate, ≤2 retries)
+→ Finish (open PR)**. It exists because, once the brief is approved, no new
+*human* decision arises until the PR itself — the middle phases are just "放行".
 
 - **Precondition.** The brief's current `revision` must already be approved
   (autopilot never self-approves). If it is not, autopilot refuses and points the
   user at `/octospec approve <slug>`.
+- **Red still comes first.** Even unattended, Implement commits the failing tests
+  (`red: <slug>`) before production code — the git trail is what makes the later
+  green trustworthy.
 - **Stops and returns to the human** on: a **spec-changing** Iterate (the
-  revision bumps → the new spec needs re-approval), or **impl-only retries
+  revision bumps → the new spec needs re-approval), or **impl/test-only retries
   exhausted** (2 failed fix→verify cycles). Report what blocked it.
 - **Never auto-merges.** It stops at "PR opened". The PR review is the second
   human gate, by design.

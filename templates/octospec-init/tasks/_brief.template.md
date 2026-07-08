@@ -40,7 +40,13 @@ approvals: []
 - 
 
 ## Acceptance
-<!-- Machine-checkable where possible: tests, assertions, repro that must pass. -->
+<!-- Each item should be expressible as a FAILING test that Implement writes
+     first (TDD Red) and commits before production code. State them so they are
+     machine-checkable: the input, the expected observable behavior, the assertion.
+     An item that genuinely cannot have an automated failing test (pure refactor,
+     UI/visual, config/dependency bump) must be marked `N/A(test): <reason>` —
+     that honest exemption is what the independent Verify checks; silently
+     skipping the test is not allowed. -->
 - 
 
 ## Iteration Log

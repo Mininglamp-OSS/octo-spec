@@ -55,27 +55,27 @@ flowchart LR
     I --> V["Verify<br/>/octospec verify"]
     V -->|pass| F["Finish<br/>/octospec finish"]
     V -->|fail| IT["Iterate<br/>/octospec iterate"]
-    IT -->|impl-only| V
+    IT -->|impl/test-only| V
     IT -->|spec-changing| P
     F -.learnings.-> D
 
     D -.branch + writes.-> DS["discovery.md (committed)"]
     P -.writes.-> B["brief.md (revision)"]
-    I -.injects matching rules.-> CODE["code"]
-    V -.independent reviewer + verify.gate.-> FIX["reviewer findings"]
+    I -.Red→Green→Refactor.-> CODE["red tests → code"]
+    V -.independent reviewer + red trail + verify.gate.-> FIX["reviewer findings"]
     F -.->PR["PR + slim journal + learnings"]
 ```
 
 | Phase | Command | What happens |
 |---|---|---|
 | **Discover** | `/octospec discover <task>` | Create the task branch; read-only exploration of the code the task touches → `discovery.md` (committed). Grounds the load-bearing list. |
-| **Plan** | `/octospec plan <slug>` | Derive the brief (Goal / load-bearing list / out-of-scope / acceptance) from discovery; commit it. Stops for approval. |
+| **Plan** | `/octospec plan <slug>` | Derive the brief (Goal / load-bearing list / out-of-scope / acceptance) from discovery; commit it. Acceptance is written to become failing tests. Stops for approval. |
 | **Approve** | `/octospec approve <slug>` | A human signs off the brief's current revision (recorded + committed). Implement is blocked until this exists. |
-| **Implement** | `/octospec implement <slug>` | Gate-checks approval, injects the rules whose `inject_when` matches, writes code on the branch. |
-| **Verify** | `/octospec verify <slug>` | An **independent reviewer** (fresh context) checks the diff vs those rules + acceptance + out-of-scope; runs `manifest.verify.gate`. No self-review. |
-| **Iterate** | `/octospec iterate <slug>` | Optional rework: impl-only → re-Verify; spec-changing → bump revision + re-approve. |
+| **Implement** | `/octospec implement <slug>` | Gate-checks approval, injects matching rules, then **TDD**: commit failing Acceptance tests (`red:`) before code, write minimal code to green, refactor. |
+| **Verify** | `/octospec verify <slug>` | An **independent reviewer** (fresh context) checks the diff vs rules + acceptance + out-of-scope, confirms the `red:` trail (tests failed first, encode Acceptance, not weakened); runs `manifest.verify.gate`. No self-review. |
+| **Iterate** | `/octospec iterate <slug>` | Optional rework: impl/test-only → re-Verify (test fix is its own commit); spec-changing → bump revision + re-approve. |
 | **Finish** | `/octospec finish <slug>` | Final check, slim journal (result + Learning), learnings landed in-PR, PR opened with Linked Spec + COMPREHENSION. |
-| **Autopilot** | `/octospec autopilot <slug>` | After approval, runs Implement → Verify → (impl-only Iterate ≤2) → Finish unattended, stopping at "PR opened". Never auto-merges. |
+| **Autopilot** | `/octospec autopilot <slug>` | After approval, runs Implement (Red→Green→Refactor) → Verify → (impl/test-only Iterate ≤2) → Finish unattended, stopping at "PR opened". Never auto-merges. |
 
 ---
 
@@ -91,9 +91,11 @@ AI:   → writes brief.md (r1): Goal / load-bearing ["space","error-response"] /
 You:  /octospec approve group-mute-toggle
 AI:   records approval for revision 1
 You:  /octospec implement group-mute-toggle
-AI:   gate OK → injects space-isolation + error-handling rules → writes handler + test
+AI:   gate OK → injects space-isolation + error-handling rules
+      → writes failing tests for A1–A4, commits `red: group-mute-toggle`
+      → writes handler until green → refactors, stays green
 You:  /octospec verify group-mute-toggle
-AI:   dispatches an independent reviewer vs Acceptance + rules, runs manifest.verify.gate
+AI:   dispatches an independent reviewer (checks red trail + Acceptance), runs manifest.verify.gate
 You:  /octospec finish group-mute-toggle
 AI:   opens PR, body pre-filled with Linked Spec (r1, approved) + COMPREHENSION
 ```
@@ -104,7 +106,7 @@ autopilot:
 ```
 You:  /octospec approve group-mute-toggle
 You:  /octospec autopilot group-mute-toggle
-AI:   Implement → independent Verify → (impl-only Iterate ≤2) → Finish → PR opened
+AI:   Implement (Red→Green→Refactor) → independent Verify → (impl/test-only Iterate ≤2) → Finish → PR opened
       (stops for you only if the spec must change, or retries run out)
 ```
 

@@ -7,6 +7,19 @@ Creation / Update / Deprecation of a knowledge unit.
 
 ## 2026-07-08
 
+- **Update** — TDD in Implement (from continued dogfood feedback), same
+  unreleased `2.0.0`: Implement now follows **Red → Green → Refactor** for
+  behavior changes. The approved Acceptance is written as failing tests and
+  committed (`red: <slug>`) **before** production code, giving the independent
+  Verify a git-provable anchor (tests failed pre-implementation, encode the
+  Acceptance, weren't weakened to fake green). Refactor is folded into Implement
+  (no new phase). Changes that genuinely can't carry a failing test use an
+  explicit `N/A(test): <reason>` in the brief — no silent skip. Updated the
+  workflow skill, router command, brief template (Acceptance = testable),
+  `comprehension-gate.md` (red-first section), octo-code adapter (Red-Green
+  parity + `red:`-before-code checklist item), and docs. Iterate's impl-only path
+  becomes **impl/test-only** (a test fix is its own explained commit).
+
 - **Update** — Loop v2 dogfood iteration (from 7-slice field feedback), same
   unreleased `2.0.0`:
   - **Autopilot** — added `/octospec autopilot <slug>`: after approval, runs

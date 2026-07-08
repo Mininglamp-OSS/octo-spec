@@ -105,6 +105,13 @@ Notes:
   self-certify. Run Verify as a **separate `claude -p` review** (fresh session,
   read-only tools) that checks the diff against the brief's Acceptance + injected
   rules + Out of scope, in addition to the repo `verify.gate`. See §C.
+- **Implement is TDD (Red → Green → Refactor).** The task prompt must instruct the
+  agent to write the approved Acceptance as failing tests and **commit them
+  (`red: <slug>`) before any production code**, then write the minimal code to
+  green, then refactor while staying green. Acceptance items marked `N/A(test)` in
+  the brief get no test. The `red:`-before-code commit order is what the §C
+  checklist verifies — an unattended run that writes tests *after* the code has
+  not done TDD.
 
 ---
 
@@ -158,6 +165,10 @@ verify against artifacts, then resume the same session if work remains.
      (not the implementing session) checked the diff against the brief's
      Acceptance; a "done" from the same session that wrote the code is not
      sufficient;
+   - **the TDD trail is intact** — a `red:` commit precedes the production code,
+     its tests failed on the pre-implementation tree and encode the approved
+     Acceptance, and the green diff did not weaken them (git log order is the
+     check); non-`N/A(test)` Acceptance items each have a test;
    - expected branch exists and is pushed;
    - the repo gate is green: run the commands in `manifest.yaml` `verify.gate`
      (fall back to the repo's documented gate if no `verify:` block);
