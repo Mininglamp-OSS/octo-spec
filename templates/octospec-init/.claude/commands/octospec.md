@@ -1,5 +1,5 @@
 ---
-description: octospec engineering loop — discover/plan/implement/verify/iterate/finish (+ approve/next/status)
+description: octospec engineering loop — discover/plan/implement/verify/iterate/finish (+ approve/next/status/autopilot)
 argument-hint: <phase> <slug>
 ---
 

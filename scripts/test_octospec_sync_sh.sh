@@ -461,6 +461,58 @@ fi
 
 cd "$REPO"
 
+# Upgrade prune: an already-onboarded repo carrying the deleted v1 commands must
+# LOSE them on re-sync (else the pre-gate octospec-go flow bypasses the approval
+# gate), while the current octospec.md and a user's own non-octospec command
+# survive. Reproduces the reviewer-reported gate-bypass and locks the fix.
+tmp10="$(mktemp -d)"; TMP_DIRS+=("$tmp10")
+cd "$tmp10"
+git init -q
+cp -r "$REPO/templates/octospec-init" .octospec
+mkdir -p .claude/commands
+# stale v1 octospec-managed commands from a prior onboarding
+printf 'v1 plan\n'   > .claude/commands/octospec-plan.md
+printf 'v1 go\n'     > .claude/commands/octospec-go.md
+printf 'v1 check\n'  > .claude/commands/octospec-check.md
+printf 'v1 finish\n' > .claude/commands/octospec-finish.md
+# a user's own, non-octospec command must never be pruned
+printf 'MY DEPLOY CMD KEEP ME\n' > .claude/commands/deploy.md
+
+set +e
+GLOBAL_SRC="$REPO" ./.octospec/scripts/octospec-sync.sh > out.log 2>&1
+code10=$?
+set -e
+
+if [ "$code10" -eq 0 ]; then
+  note ok "upgrade-prune sync exits 0"
+else
+  note FAIL "upgrade-prune sync exited $code10"; fail=1; cat out.log
+fi
+
+stale_left=0
+for c in octospec-plan octospec-go octospec-check octospec-finish; do
+  [ -e ".claude/commands/$c.md" ] && stale_left=$((stale_left + 1))
+done
+if [ "$stale_left" -eq 0 ]; then
+  note ok "upgrade prunes all four obsolete v1 octospec commands"
+else
+  note FAIL "upgrade left $stale_left obsolete v1 octospec command(s) → gate bypass"; fail=1
+fi
+
+if [ -f .claude/commands/octospec.md ]; then
+  note ok "current octospec.md router installed after prune"
+else
+  note FAIL "octospec.md router missing after prune"; fail=1
+fi
+
+if grep -q "MY DEPLOY CMD KEEP ME" .claude/commands/deploy.md 2>/dev/null; then
+  note ok "user's own non-octospec command left untouched by prune"
+else
+  note FAIL "prune removed a user's non-octospec command"; fail=1
+fi
+
+cd "$REPO"
+
 if [ "$fail" -eq 0 ]; then
   echo "root-scaffolding materialization test: PASS"
 else

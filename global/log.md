@@ -5,6 +5,36 @@ Change history for the global ("constitution") rules, following the
 change-log convention (§7). Newest entries first. Each entry records
 Creation / Update / Deprecation of a knowledge unit.
 
+## 2026-07-10 (PR #21 review fixes)
+
+- **Fix** — **Sync now prunes obsolete octospec-managed commands.**
+  `octospec-sync.sh` was install-if-missing only, so an already-onboarded repo
+  kept the deleted v1 `octospec-{plan,go,check,finish}.md` after re-sync — a
+  fail-open bypass of the approval gate (the old `octospec-go` writes code with no
+  approval check). Added a `prune_obsolete_commands` step that removes root
+  `.claude/commands/octospec*.md` files absent from the template source (scoped to
+  the octospec namespace so user files are never touched), plus a regression test
+  that seeds a stale `octospec-go.md` and asserts it is pruned while `octospec.md`
+  and a user's own command survive.
+- **Fix** — **Approval no longer writes invalid YAML.** The spec template shipped
+  `approvals: []` (flow empty list); appending a block-sequence approval under it
+  is invalid YAML and would break OKF lint + the machine-checkable gate on first
+  approval. Changed to a bare `approvals:` block key (same fix applied to
+  `rules/_index.yaml`'s `rules:`).
+- **Fix** — **Finish helper reconciled with the flat slim journal.** Removed the
+  `--kind=task` per-actor `journal/by-actor/<actor>/<slug>.md` lane from
+  `octospec-update-spec.sh` (the Finish phase writes the flat
+  `journal/<slug>.md` directly); `--kind=task` now refuses with a pointer to the
+  replacement. Updated the self-test accordingly.
+- **Fix** (non-blocking) — Scoped the octo-code-doctor `verify.tools` awk parser
+  to the `verify:` block (an unrelated earlier `tools:` key no longer misleads
+  it); marked the adapter's `--allowedTools` derivation as pseudocode and added
+  tool-token validation guidance (reject shell wrappers / grammar chars); dropped
+  the stale "injection budget" comment; propagated `impl-only → impl/test-only`
+  and `self-fixing → independent verify` in both READMEs and docs; added red-first
+  TDD + independent-verify + autopilot to `AGENT-BLOCK.md`; noted autopilot's
+  red-first check is conditional on ≥1 testable acceptance item.
+
 ## 2026-07-10
 
 - **Release** — Cut **`2.1.0`**, bundling this round plus the two prior

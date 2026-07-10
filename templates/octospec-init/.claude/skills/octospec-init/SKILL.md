@@ -55,7 +55,7 @@ Edit `.octospec/manifest.yaml`:
   checkout you are syncing from. Read it from that checkout's `VERSION` file
   (`cat <path-to>/octo-spec/VERSION`) rather than hardcoding a number here, so
   this instruction never drifts when octo-spec bumps its version. For example,
-  if `VERSION` says `1.2.0`, set `inherits: octo-spec@1.2.0`. The pin must match
+  if `VERSION` says `2.1.0`, set `inherits: octo-spec@2.1.0`. The pin must match
   the `GLOBAL_SRC` checkout's `VERSION` exactly or `octospec-sync.sh` fails the
   version assertion. The template manifest already ships pinned to this
   checkout's version, so when you sync from the same checkout no edit is needed.

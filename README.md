@@ -134,7 +134,7 @@ flowchart LR
     A -->|no| P
     V -->|pass| F["Finish"]
     V -->|fail| IT["Iterate"]
-    IT -->|impl-only| V
+    IT -->|impl/test-only| V
     IT -->|spec-changing| P
     F -.promote learnings.-> D
 ```
@@ -142,8 +142,8 @@ flowchart LR
 ```
 Discover  → read-only: understand the code the task touches (writes discovery.md)
 Plan      → derive a spec from discovery; a human APPROVES its revision
-Implement → gate-checks approval, then writes code with matching rules injected
-Verify    → diff checked against rules + the repo's verify.gate, self-fixing
+Implement → gate-checks approval, then TDD (Red→Green→Refactor) with rules injected
+Verify    → an INDEPENDENT reviewer checks the diff vs the spec + the repo's verify.gate
 Iterate   → (optional) rework; spec-changing rework re-triggers approval
 Finish    → a final check runs, then new learnings are promoted back into rules/
             in the same PR (no dead-letter; pending/ holds only unresolved ones)

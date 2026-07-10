@@ -71,10 +71,20 @@ TS repo is not gated behind a Python assumption). Read `verify.tools` and expand
 each into `Bash(<tool> *)`:
 
 ```bash
+# ILLUSTRATIVE pseudocode (no runtime engine ships here). `read_verify_tools` is
+# the verify:-scoped extractor from octo-code-doctor.sh (§F) — reuse that, don't
+# re-parse ad hoc.
 # constant core
 TOOLS="Read,Edit,Write,Bash(git *),Bash(gh *)"
 # derive from the repo's declared verify toolchain (verify.tools in manifest.yaml)
 for t in $(read_verify_tools "<repo>/.octospec/manifest.yaml"); do
+  # HARDEN: the manifest is repo-controlled input that widens an unattended
+  # agent's command surface, so validate each token before trusting it. Accept
+  # only a bare command name and REJECT grammar chars / shell wrappers:
+  case "$t" in
+    bash|sh|zsh|env|eval|exec) continue;;          # no shell wrappers
+    *[!a-zA-Z0-9_.-]*) continue;;                  # no commas/parens/spaces/globs
+  esac
   TOOLS="$TOOLS,Bash($t *)"
 done   # Go → Bash(go *),Bash(gofmt *) ; TS → Bash(pnpm *),Bash(npx *) ; etc.
 

@@ -10,8 +10,11 @@ upstream: <issue ref, e.g. repo#123>
 source: self
 # revision bumps ONLY on a spec-changing iteration (see Iteration Log). Each
 # revision needs a matching approval below before Implement may run.
+# `approvals:` is an empty block sequence — `/octospec approve` APPENDS a block
+# item under it (do NOT write `approvals: []`; appending a block item under a
+# flow-style empty list is invalid YAML and would break the machine-checkable gate).
 revision: 1
-approvals: []
+approvals:
   # - revision: 1
   #   by: <git config user.name>
   #   at: <ISO8601 UTC>

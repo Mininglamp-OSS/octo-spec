@@ -70,7 +70,9 @@ the PR opened at Finish already contains the spec — nothing is copied by hand.
 ### 2. Plan
 - Read `.octospec/tasks/_spec.template.md` and the `discovery.md` you just wrote.
 - Write `.octospec/tasks/<slug>/spec.md` with OKF frontmatter (`type: Task` +
-  title/description/tags/timestamp, and `revision: 1`, `approvals: []`):
+  title/description/tags/timestamp, `revision: 1`, and a bare `approvals:` key —
+  an empty block sequence, NOT `approvals: []`, so the approve step can append a
+  block item as valid YAML):
   - **Goal** — what behavior changes and why.
   - **Load-bearing list** — derive it from `discovery.md`. Use the same tags as
     `.octospec/rules/_index.yaml` `inject_when.touches` where they apply.
@@ -275,7 +277,10 @@ Only when Verify failed or surfaced a gap. Decide the kind of rework:
   user at `/octospec approve <slug>`.
 - **Red still comes first.** Even unattended, Implement commits the failing tests
   (`red: <slug>`) before production code — the git trail is what makes the later
-  green trustworthy.
+  green trustworthy. This applies to **behavior-change** slices; a slice with only
+  `N/A(test)` / `N/A(test-first)` acceptance items has no `red:` commit to require
+  (see Slice classification), so the red-first check is conditional on there being
+  at least one testable item.
 - **Stops and returns to the human** on: a **spec-changing** Iterate (the
   revision bumps → the new spec needs re-approval), or **impl/test-only retries
   exhausted** (2 failed fix→verify cycles). Report what blocked it.

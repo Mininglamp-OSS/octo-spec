@@ -126,16 +126,16 @@ flowchart LR
     A -->|否| P
     V -->|通过| F["收尾"]
     V -->|失败| IT["迭代"]
-    IT -->|仅实现| V
+    IT -->|仅实现/测试| V
     IT -->|改动 spec| P
     F -.提炼学习成果.-> D
 ```
 
 ```
 Discover  → 只读:理解任务将触碰的代码(写入 discovery.md)
-Plan      → 从 discovery 派生一份简报;由真人 **批准(approve)** 其 revision
-Implement → 先校验 approval 门,再在相关规则注入的情况下写代码(不提交)
-Verify    → 对照规则 + 本仓库的 verify.gate 校验 diff,并自我修复
+Plan      → 从 discovery 派生一份 spec;由真人 **批准(approve)** 其 revision
+Implement → 先校验 approval 门,再按 TDD(Red→Green→Refactor)在相关规则注入下写代码
+Verify    → 由**独立评审**(fresh context)对照 spec + 本仓库的 verify.gate 校验 diff
 Iterate   → (可选)返工;改动 spec 的返工会重新触发 approval
 Finish    → 运行一次最终检查,然后把新的学习成果于同一 PR 内提炼回 rules/
             (无死信;pending/ 只留未决项)

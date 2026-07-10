@@ -20,20 +20,28 @@ When you take on a coding task here:
    file you will touch, OR its `inject_when.touches` tag is in the spec's
    load-bearing list. **Read and follow the full text** of each matching rule
    before writing code; prioritize `load_bearing: true` rules.
-4. **Implement** following those rules — only after the current spec revision is
-   approved.
-5. **Verify** the diff against each injected rule and the spec's acceptance; run
-   the repo's gate (`manifest.yaml` `verify.gate`, else CLAUDE.md gates). Rework
-   via **Iterate** if it fails (spec-changing rework re-triggers approval).
-6. **Finish:** journal the work, land any reusable learning in this same PR, and
-   open a PR filling **Linked Spec** + the **COMPREHENSION** three questions for
+4. **Implement (TDD).** Only after the current spec revision is approved. For a
+   behavior change, write the approved acceptance as **failing tests first and
+   commit them (`red: <slug>`) before production code** (Red), then the minimal
+   code to green, then refactor while green. A change that genuinely can't carry a
+   failing test uses an explicit `N/A(test): <reason>` in the spec — never a
+   silent skip.
+5. **Verify — independently.** A **fresh context** (not the one that wrote the
+   code) checks the diff against each injected rule and the spec's acceptance,
+   confirms the `red:`-before-code trail, and runs the repo's gate
+   (`manifest.yaml` `verify.gate`, else CLAUDE.md gates). No self-certifying.
+   Rework via **Iterate** if it fails (spec-changing rework re-triggers approval).
+6. **Finish:** journal the work (flat `.octospec/journal/<slug>.md`: one-line
+   Result + `## Learning`), land any reusable learning in this same PR, and open a
+   PR filling **Linked Spec** + the **COMPREHENSION** three questions for
    load-bearing / architectural / P0 changes. Trivial changes
    (typo/docs/lint/config) are exempt.
 
 Claude Code users drive this with one command: `/octospec <phase> <slug>`
 (`discover|plan|implement|verify|iterate|finish`, plus `approve`, `next`,
-`status`) — committed under `.claude/commands/`. Other agents read the same
-`.octospec/` files directly — the steps above are the same regardless of tool.
+`status`, and `autopilot` to run implement→verify→finish after approval) —
+committed under `.claude/commands/`. Other agents read the same `.octospec/`
+files directly — the steps above are the same regardless of tool.
 
 The first time you apply this in a session, tell the user in one line that this
 repo follows the octo-spec standard and point them at `.octospec/` (and

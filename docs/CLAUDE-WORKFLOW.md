@@ -69,7 +69,7 @@ make it *binding*.
 | `/octospec verify <slug>` | Dispatch an **independent reviewer** (fresh context) vs injected rules + Acceptance + Out of scope; confirm the `red:` commit precedes the code and tests encode Acceptance; run `verify.gate`. No self-review. | (validation only) |
 | `/octospec iterate <slug>` | Disciplined rework: impl/test-only → re-Verify (test fix is its own commit); spec-changing → bump revision + re-approve. | `spec.md` Iteration Log (spec-changing only) |
 | `/octospec finish <slug>` | Final gate, slim journal (result + Learning), land learnings in-PR, open a PR (Linked Spec + COMPREHENSION). | `journal/<slug>.md` |
-| `/octospec autopilot <slug>` | After approval, run Implement → Verify → (impl-only Iterate ≤2) → Finish unattended, stopping at "PR opened". | (as above) |
+| `/octospec autopilot <slug>` | After approval, run Implement → Verify → (impl/test-only Iterate ≤2) → Finish unattended, stopping at "PR opened". | (as above) |
 
 `/octospec next <slug>` runs the inferred next phase; `/octospec status <slug>`
 reports progress read-only.

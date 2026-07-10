@@ -157,11 +157,18 @@ if [ -n "$REPO" ]; then
         #   block: tools:
         #            - go
         #            - gofmt
-        # Try the flow form on the `tools:` line first; if nothing follows the
-        # colon there, collect the subsequent block-sequence `- item` lines until
-        # the indentation drops back to the `tools:` key (end of the block).
+        # SCOPED to the `verify:` block: we only consider a `tools:` key that is
+        # nested under a top-level `verify:` line, so an unrelated `tools:` under
+        # some other section (e.g. build:/deploy:) is never mistaken for it. Try
+        # the flow form on the `tools:` line first; if nothing follows the colon
+        # there, collect the subsequent block-sequence `- item` lines until the
+        # indentation drops back to the `tools:` key (end of the block).
         VTOOLS="$(awk '
-          /^[[:space:]]*tools[[:space:]]*:/ {
+          # Enter the verify: block on a top-level (unindented) `verify:` key.
+          /^verify[[:space:]]*:/ { in_verify=1; verify_indent=0; next }
+          # A new top-level key (no indent, not a list item) ends the verify block.
+          in_verify && /^[^[:space:]#-]/ && !/^verify[[:space:]]*:/ { in_verify=0 }
+          in_verify && /^[[:space:]]*tools[[:space:]]*:/ {
             line=$0; sub(/^[[:space:]]*tools[[:space:]]*:[[:space:]]*/, "", line)
             sub(/#.*$/, "", line); gsub(/[][]/, "", line); gsub(/,/, " ", line)
             gsub(/["'"'"']/, "", line)

@@ -173,6 +173,36 @@ EOF
 
 install_missing "$OCTOSPEC_DIR/.claude" "$REPO_ROOT/.claude" ".claude (slash commands + skills)"
 
+# 3b) Prune octospec-managed command files that no longer exist in the template.
+# install_missing is copy-if-absent, so a command REMOVED from the template (e.g.
+# the v1 octospec-{plan,go,check,finish} consolidated into one octospec.md) would
+# otherwise linger at the repo root forever and keep offering a pre-gate flow that
+# bypasses the approval gate. We reconcile-to-source, but ONLY within octospec's
+# own namespace: files matching `octospec*.md` under .claude/commands/. A file the
+# template still ships (octospec.md) is kept; a user's own non-octospec command is
+# never touched. This is deletion, so it is deliberately scoped and namespaced.
+prune_obsolete_commands() {
+  src_cmd_dir="$OCTOSPEC_DIR/.claude/commands"
+  dest_cmd_dir="$REPO_ROOT/.claude/commands"
+  [ -d "$dest_cmd_dir" ] || return 0
+  pruned=0
+  while IFS= read -r dest; do
+    [ -n "$dest" ] || continue
+    base="$(basename "$dest")"
+    # Only ever consider octospec-managed command files.
+    case "$base" in octospec*.md) :;; *) continue;; esac
+    if [ ! -e "$src_cmd_dir/$base" ]; then
+      rm -f "$dest"
+      pruned=$((pruned + 1))
+      echo "octospec: pruned obsolete command $base"
+    fi
+  done <<EOF
+$(find "$dest_cmd_dir" -maxdepth 1 -type f -name 'octospec*.md' 2>/dev/null)
+EOF
+  echo "octospec: command prune -> removed $pruned obsolete"
+}
+prune_obsolete_commands
+
 PRT_SRC="$OCTOSPEC_DIR/.github/PULL_REQUEST_TEMPLATE.md"
 PRT_DEST="$REPO_ROOT/.github/PULL_REQUEST_TEMPLATE.md"
 if [ -f "$PRT_SRC" ]; then
