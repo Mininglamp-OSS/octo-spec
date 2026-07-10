@@ -84,10 +84,22 @@ scaffolding that tools only discover at the root:
 - copies `.octospec/.github/PULL_REQUEST_TEMPLATE.md` to `.github/` so GitHub
   applies the PR template (the body the Finish phase pre-fills).
 
-This step is **install-if-missing**: any `.claude/` or `.github/` file you have
-already customized at the root is left untouched, and re-running sync is
-idempotent. Commit the materialized root `.claude/` and `.github/` so teammates
-get them on a plain `git pull`.
+This step is **install-if-missing** at the root: any `.claude/` or `.github/`
+file you have already customized at the root is left untouched, and re-running
+sync is idempotent. It also **prunes** octospec-managed root commands
+(`.claude/commands/octospec*.md`) that the pinned version no longer ships (never
+your own commands). Commit the materialized root `.claude/` and `.github/` so
+teammates get them on a plain `git pull`.
+
+> **Upgrading is one step.** Before materializing the root, sync **refreshes the
+> managed template surfaces** (`.octospec/.claude/`, `.octospec/.github/`, and the
+> fill-in templates) from `GLOBAL_SRC` — the same freshness model as `_global/`.
+> So to move to a newer octo-spec you only bump `inherits:` in `manifest.yaml` and
+> re-run sync from the matching checkout: the new command/skill/PR-template land at
+> the root and obsolete commands are pruned automatically. The one surface sync
+> can't refresh in place is `.octospec/scripts/` itself (it is the running script)
+> — re-copy the template `scripts/` on a tooling upgrade. Your own content
+> (`manifest.yaml`, real `tasks/`, `journal/`, `rules/`) is never touched.
 
 ### 4. Confirm the agent-instruction block landed
 

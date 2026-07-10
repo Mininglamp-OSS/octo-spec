@@ -82,6 +82,42 @@ mkdir -p "$GLOBAL_CACHE"
 cp -r "$GLOBAL_SRC/global/." "$GLOBAL_CACHE/"
 echo "octospec: synced global rules -> $GLOBAL_CACHE"
 
+# 1b) Refresh the octospec-MANAGED template surfaces from GLOBAL_SRC — same
+# freshness model as _global/ above. Without this, upgrading (bump the pin +
+# re-run sync) would reconcile the repo root against a STALE vendored
+# `.octospec/.claude`, so a deleted v1 command would never be pruned and a new
+# router would never be installed (the exact upgrade gate-bypass reviewers hit).
+# Only octospec-owned scaffolding is refreshed; USER content is never touched:
+# manifest.yaml (the pin), tasks/<slug>/ (real tasks), journal/<slug>.md (real
+# journals), and rules/*.md + rules/_index.yaml (the repo's own rules) are all
+# left exactly as the user has them.
+TEMPLATE_SRC="$GLOBAL_SRC/templates/octospec-init"
+if [ -d "$TEMPLATE_SRC" ]; then
+  # Whole managed subtrees (contain zero user content by design). We intentionally
+  # do NOT refresh scripts/ here: this very script runs from .octospec/scripts/,
+  # so rm-ing that dir mid-run would unlink the running file. scripts/ refresh
+  # stays a documented manual step (re-copy the template on upgrade); the sync
+  # regression test's drift guard keeps the copies honest.
+  for sub in .claude .github; do
+    if [ -d "$TEMPLATE_SRC/$sub" ]; then
+      rm -rf "$OCTOSPEC_DIR/$sub"
+      cp -r "$TEMPLATE_SRC/$sub" "$OCTOSPEC_DIR/$sub"
+    fi
+  done
+  # Individual fill-in templates (never the user's real tasks/journals/rules).
+  for f in tasks/_spec.template.md tasks/_discovery.template.md \
+           journal/_journal.template.md AGENT-BLOCK.md; do
+    if [ -f "$TEMPLATE_SRC/$f" ]; then
+      mkdir -p "$OCTOSPEC_DIR/$(dirname "$f")"
+      rm -f "$OCTOSPEC_DIR/$f"
+      cp "$TEMPLATE_SRC/$f" "$OCTOSPEC_DIR/$f"
+    fi
+  done
+  echo "octospec: refreshed managed template surfaces from $TEMPLATE_SRC"
+else
+  echo "octospec: WARNING no template at $TEMPLATE_SRC; skipping managed refresh" >&2
+fi
+
 # Ensure _global/ is git-ignored (with a trailing-newline guard so we never glue
 # onto a previous line that lacks a newline).
 GITIGNORE="$OCTOSPEC_DIR/.gitignore"

@@ -7,6 +7,7 @@ set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/.." && pwd)"
+SRC_VER="$(tr -d '[:space:]' < "$REPO/VERSION")"   # for the stale-source upgrade case
 fail=0
 
 note() { printf '%s - %s\n' "$1" "$2"; }
@@ -461,20 +462,29 @@ fi
 
 cd "$REPO"
 
-# Upgrade prune: an already-onboarded repo carrying the deleted v1 commands must
-# LOSE them on re-sync (else the pre-gate octospec-go flow bypasses the approval
-# gate), while the current octospec.md and a user's own non-octospec command
-# survive. Reproduces the reviewer-reported gate-bypass and locks the fix.
+# Upgrade prune (STALE-SOURCE, the real upgrade path): an already-onboarded 1.x
+# repo carries the deleted v1 commands in BOTH its vendored `.octospec/.claude/`
+# AND at the repo root. On the documented upgrade (bump pin + re-run sync, WITHOUT
+# manually re-copying the template into .octospec), sync must refresh the vendored
+# `.octospec/.claude` from GLOBAL_SRC, then install the new router and prune the v1
+# commands from root — else the pre-gate octospec-go flow bypasses the approval
+# gate and the new router never lands. Modeling the stale source is the point: a
+# test that pre-copies the fresh template would mask exactly this bug.
 tmp10="$(mktemp -d)"; TMP_DIRS+=("$tmp10")
 cd "$tmp10"
 git init -q
-cp -r "$REPO/templates/octospec-init" .octospec
-mkdir -p .claude/commands
-# stale v1 octospec-managed commands from a prior onboarding
-printf 'v1 plan\n'   > .claude/commands/octospec-plan.md
-printf 'v1 go\n'     > .claude/commands/octospec-go.md
-printf 'v1 check\n'  > .claude/commands/octospec-check.md
-printf 'v1 finish\n' > .claude/commands/octospec-finish.md
+# A 1.x-style vendored tree: old commands, old skill, NO octospec.md router.
+mkdir -p .octospec/.claude/commands .octospec/.claude/skills/octospec-workflow
+mkdir -p .octospec/scripts .claude/commands
+for c in plan go check finish; do
+  printf 'v1 %s\n' "$c" > ".octospec/.claude/commands/octospec-$c.md"
+  printf 'v1 %s\n' "$c" > ".claude/commands/octospec-$c.md"   # root mirror
+done
+printf 'v1 skill\n' > .octospec/.claude/skills/octospec-workflow/SKILL.md
+# pin bumped to the current VERSION (the documented upgrade action)
+printf 'inherits: octo-spec@%s\n' "$SRC_VER" > .octospec/manifest.yaml
+# scripts/ re-copied on upgrade (README step); this is what runs the sync.
+cp "$REPO/templates/octospec-init/scripts/"* .octospec/scripts/
 # a user's own, non-octospec command must never be pruned
 printf 'MY DEPLOY CMD KEEP ME\n' > .claude/commands/deploy.md
 
@@ -484,9 +494,18 @@ code10=$?
 set -e
 
 if [ "$code10" -eq 0 ]; then
-  note ok "upgrade-prune sync exits 0"
+  note ok "stale-source upgrade sync exits 0"
 else
-  note FAIL "upgrade-prune sync exited $code10"; fail=1; cat out.log
+  note FAIL "stale-source upgrade sync exited $code10"; fail=1; cat out.log
+fi
+
+# The vendored .claude must have been refreshed from GLOBAL_SRC (else prune/install
+# reconcile against the stale 1.x copy — the root-cause the reviewers found).
+if [ -f .octospec/.claude/commands/octospec.md ] && \
+   [ ! -e .octospec/.claude/commands/octospec-go.md ]; then
+  note ok "vendored .octospec/.claude refreshed from GLOBAL_SRC (router in, v1 out)"
+else
+  note FAIL "vendored .octospec/.claude not refreshed → stale-source bug persists"; fail=1
 fi
 
 stale_left=0
@@ -494,15 +513,15 @@ for c in octospec-plan octospec-go octospec-check octospec-finish; do
   [ -e ".claude/commands/$c.md" ] && stale_left=$((stale_left + 1))
 done
 if [ "$stale_left" -eq 0 ]; then
-  note ok "upgrade prunes all four obsolete v1 octospec commands"
+  note ok "upgrade prunes all four obsolete v1 octospec commands from root"
 else
   note FAIL "upgrade left $stale_left obsolete v1 octospec command(s) → gate bypass"; fail=1
 fi
 
 if [ -f .claude/commands/octospec.md ]; then
-  note ok "current octospec.md router installed after prune"
+  note ok "current octospec.md router installed at root after upgrade"
 else
-  note FAIL "octospec.md router missing after prune"; fail=1
+  note FAIL "octospec.md router missing at root after upgrade"; fail=1
 fi
 
 if grep -q "MY DEPLOY CMD KEEP ME" .claude/commands/deploy.md 2>/dev/null; then

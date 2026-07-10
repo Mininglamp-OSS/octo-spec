@@ -182,8 +182,8 @@ agent 都能读取它 —— 同时 octospec 在其之上,作为 OKF 允许的�
   journal/<slug>.md        # 单任务记录 + 结构性学习成果
   learnings/pending/<slug>.md   # 仅存放尚需人工设计的未决学习项
   scripts/
-    octospec-update-spec.sh     # 收尾阶段助手:生成 rule 草稿 + promotion issue
-                                # 正文,或写入 per-actor journal 条目
+    octospec-update-spec.sh     # 收尾阶段助手:生成 rule 草稿 + 供同一 PR 内落地的
+                                # promotion 材料
 ```
 
 > 可复用的学习成果在收尾(Finish)阶段**于同一个 PR 内**就地回流(直接编辑相关的

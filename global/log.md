@@ -7,7 +7,21 @@ Creation / Update / Deprecation of a knowledge unit.
 
 ## 2026-07-10 (PR #21 review fixes)
 
-- **Fix** — **Sync now prunes obsolete octospec-managed commands.**
+- **Fix** — **Sync refreshes the managed template surfaces from `GLOBAL_SRC` (fixes
+  the upgrade gate-bypass at its root).** The prune added earlier reconciled the
+  repo root against the repo's *vendored* `.octospec/.claude/`, which sync never
+  refreshed — so on the documented upgrade (bump pin + re-run sync) a stale 1.x
+  vendored copy meant the v1 commands were never pruned and the new router was
+  never installed, while sync reported success. Sync now refreshes the
+  octospec-managed surfaces (`.octospec/.claude/`, `.octospec/.github/`, and the
+  fill-in `_spec`/`_discovery`/`_journal` templates + `AGENT-BLOCK.md`) from the
+  `GLOBAL_SRC` template on every run — the same freshness model as `_global/` —
+  so install + prune operate on the pinned version, not a stale copy. User content
+  (`manifest.yaml`, real `tasks/`/`journal/`/`rules/`) is untouched; `scripts/` is
+  deliberately not refreshed in place (it is the running script). The upgrade-prune
+  regression test was rewritten to model a genuinely **stale 1.x source** (the case
+  the prior test masked by pre-copying the fresh template).
+- **Fix** — **Sync prunes obsolete octospec-managed commands.**
   `octospec-sync.sh` was install-if-missing only, so an already-onboarded repo
   kept the deleted v1 `octospec-{plan,go,check,finish}.md` after re-sync — a
   fail-open bypass of the approval gate (the old `octospec-go` writes code with no
