@@ -261,7 +261,7 @@ if [ "$KIND" = "rule" ]; then
   # unfinished idea goes in the task journal's ## Learning.)
   DRAFT_DIR="$OCTOSPEC_DIR/tasks/$SLUG"
   DRAFT_PATH="$DRAFT_DIR/${SLUG}-rule-draft.md"
-  mkdir -p "$DRAFT_DIR"
+  # (no mkdir here — atomic_write creates the parent dir on write)
 
   if [ -e "$DRAFT_PATH" ] && [ "$SKIP_EXISTING" -eq 1 ]; then
     echo "$PROG: draft exists, --skip-existing set; leaving $DRAFT_PATH untouched" >&2

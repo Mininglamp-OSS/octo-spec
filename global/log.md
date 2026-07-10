@@ -5,6 +5,23 @@ Change history for the global ("constitution") rules, following the
 change-log convention (§7). Newest entries first. Each entry records
 Creation / Update / Deprecation of a knowledge unit.
 
+## 2026-07-10 (upgrade refresh of managed root surfaces)
+
+- **Fix** — **Sync refreshes octospec-managed ROOT surfaces from source on
+  upgrade.** Root materialization was copy-if-absent (`install_missing`), so
+  stable-path files — the repo-root `octospec-workflow` skill, the `/octospec`
+  command, and the PR template — were frozen at their first-installed version. On
+  the documented upgrade (bump pin + re-run sync) an already-onboarded repo kept a
+  v1 root skill that predates the approval gate, re-opening the same class of
+  pre-gate bypass the command-prune closed (the router delegates all phase logic
+  to that skill). Fixed: root materialization is now **install-or-refresh scoped
+  to the octospec namespace** — octospec-owned files (`commands/octospec*.md`,
+  `skills/octospec-*/**`, the PR template) are overwritten from the freshly
+  re-vendored source every run; a user's own non-octospec file under `.claude/` is
+  still install-if-missing. Added regression assertions that a seeded stale root
+  skill / command / PR template refresh to the current source on upgrade while a
+  user's `deploy.md` survives.
+
 ## 2026-07-10 (skill-first, Claude-only)
 
 - **Deprecation (breaking onboarding change)** — **Removed the agent-instruction

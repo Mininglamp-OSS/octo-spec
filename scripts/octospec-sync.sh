@@ -132,20 +132,43 @@ fi
 # .octospec/.github/PULL_REQUEST_TEMPLATE.md, but Claude Code only discovers
 # slash commands/skills under the REPO ROOT .claude/, and GitHub only applies a
 # PR template at the REPO ROOT .github/. So copy these out of .octospec/ to the
-# root — install-if-missing only: an existing destination file is left untouched
-# so hand-written customizations are never clobbered. This makes the whole step
-# idempotent (a second run reports everything already present).
+# root with TWO policies:
+#   - octospec-OWNED files (commands/octospec*.md, skills/octospec-*/**, and the
+#     PR template) are REFRESHED FROM SOURCE (overwritten) every run, so an
+#     upgrade actually delivers the pinned version. These have stable paths, so
+#     copy-if-absent would leave them frozen at the first-installed version — the
+#     exact stale-root-skill gate-bypass reviewers hit.
+#   - any OTHER file under .claude/ (a user's own command/skill) is
+#     install-if-missing: an existing destination is left untouched so
+#     hand-written customizations are never clobbered.
+# Either way the step is idempotent.
 #
-# install_missing SRC_DIR DEST_DIR LABEL — copy every file under SRC_DIR into
-# DEST_DIR (mirroring subpaths), skipping any destination file that exists.
-install_missing() {
+# is_octospec_owned REL — true if the repo-relative .claude path is a file
+# octospec manages (and may therefore overwrite on refresh).
+is_octospec_owned() {
+  case "$1" in
+    commands/octospec*.md) return 0;;
+    skills/octospec-*/*)   return 0;;
+    *) return 1;;
+  esac
+}
+
+# install_or_refresh SRC_DIR DEST_DIR LABEL — copy every file under SRC_DIR into
+# DEST_DIR (mirroring subpaths). octospec-owned files overwrite; others are
+# install-if-missing.
+install_or_refresh() {
   src_dir="$1"; dest_dir="$2"; label="$3"
   [ -d "$src_dir" ] || return 0
-  installed=0; skipped=0
+  installed=0; refreshed=0; skipped=0
   while IFS= read -r src; do
+    [ -n "$src" ] || continue
     rel="${src#"$src_dir"/}"
     dest="$dest_dir/$rel"
-    if [ -e "$dest" ]; then
+    if is_octospec_owned "$rel"; then
+      mkdir -p "$(dirname "$dest")"
+      cp "$src" "$dest"
+      refreshed=$((refreshed + 1))
+    elif [ -e "$dest" ]; then
       skipped=$((skipped + 1))
     else
       mkdir -p "$(dirname "$dest")"
@@ -155,10 +178,10 @@ install_missing() {
   done <<EOF
 $(find "$src_dir" -type f)
 EOF
-  echo "octospec: $label -> installed $installed, kept $skipped existing"
+  echo "octospec: $label -> refreshed $refreshed, installed $installed, kept $skipped existing"
 }
 
-install_missing "$OCTOSPEC_DIR/.claude" "$REPO_ROOT/.claude" ".claude (slash commands + skills)"
+install_or_refresh "$OCTOSPEC_DIR/.claude" "$REPO_ROOT/.claude" ".claude (slash commands + skills)"
 
 # 2b) Prune octospec-managed command files that no longer exist in the template.
 # install_missing is copy-if-absent, so a command REMOVED from the template (e.g.
@@ -193,13 +216,12 @@ prune_obsolete_commands
 PRT_SRC="$OCTOSPEC_DIR/.github/PULL_REQUEST_TEMPLATE.md"
 PRT_DEST="$REPO_ROOT/.github/PULL_REQUEST_TEMPLATE.md"
 if [ -f "$PRT_SRC" ]; then
-  if [ -e "$PRT_DEST" ]; then
-    echo "octospec: .github/PULL_REQUEST_TEMPLATE.md -> kept existing"
-  else
-    mkdir -p "$REPO_ROOT/.github"
-    cp "$PRT_SRC" "$PRT_DEST"
-    echo "octospec: .github/PULL_REQUEST_TEMPLATE.md -> installed"
-  fi
+  # The PR template is octospec-managed: refresh it from source every run so an
+  # upgrade delivers the current template (it has a stable path, so copy-if-absent
+  # would freeze it at the first-installed version).
+  mkdir -p "$REPO_ROOT/.github"
+  cp "$PRT_SRC" "$PRT_DEST"
+  echo "octospec: .github/PULL_REQUEST_TEMPLATE.md -> refreshed from source"
 fi
 
 echo "octospec: done."

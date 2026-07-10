@@ -105,7 +105,7 @@ Code discovers them), and the PR template (under `.github/`). Commit the new fil
 **How the loop runs from here:** ask Claude Code to "add a feature" / "fix
 this bug" (the workflow skill triggers), or drive a single phase explicitly with
 one command (`/octospec discover|plan|implement|verify|iterate|finish`, plus
-`approve`). The 6-phase loop is executed **by the agent** — there is no loop CLI
+`approve`, `autopilot`, `next`, `status`). The 6-phase loop is executed **by the agent** — there is no loop CLI
 to paste (see
 [The 6-phase loop](#the-6-phase-loop) below).
 
@@ -276,8 +276,11 @@ reviewed PR — that's how the standard gets smarter without drifting silently.
 
 By design. Claude Code only discovers slash commands / skills under the repo-root
 `.claude/`, and GitHub only applies a PR template at the repo-root `.github/`. So
-sync materializes those out of `.octospec/` to the root — install-if-missing
-(never clobbers a file you've customized) and idempotent on re-run.
+sync materializes those out of `.octospec/` to the root. **octospec-managed** files
+(the `/octospec` command, the `octospec-*` skills, the PR template) are refreshed
+from source on every run so upgrades actually land; a file you authored yourself
+(a non-octospec command/skill under `.claude/`) is install-if-missing and left
+untouched. Idempotent on re-run.
 </details>
 
 ## License
@@ -291,8 +294,8 @@ octo-spec is licensed under the **Apache License 2.0**. See [LICENSE](LICENSE) a
 
 - The template ships its own `scripts/` (`octospec-sync.sh`), so the copied `.octospec/` carries the sync script itself — you don't need a path back into the octo-spec checkout just to locate it. The global rules are still sourced from an octo-spec checkout at sync time (see `GLOBAL_SRC`).
 - Sync vendors the global rules into git-ignored `.octospec/_global/`. It does **not** write `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`QWEN.md` — octospec is discovered through the Claude Code skill + command under `.claude/` (the agent-instruction injection block was removed).
-- Sync also **materializes repo-root scaffolding** that tools only discover at the root: it copies `.octospec/.claude/` (the `/octospec` command + workflow skill) to the repo-root `.claude/`, and `.octospec/.github/PULL_REQUEST_TEMPLATE.md` to `.github/`. This is install-if-missing — an existing destination file is left untouched, so hand-written customizations are never clobbered. It also **prunes** octospec-managed root commands (`.claude/commands/octospec*.md`) that the pinned version no longer ships, so an upgrade that removes a command actually removes it (never a user's own commands).
-- **Upgrade in one step.** Sync refreshes the octospec-managed template surfaces (`.octospec/.claude/`, `.octospec/.github/`, and the fill-in templates) from `GLOBAL_SRC` on every run — the same way it refreshes `_global/`. So to upgrade you only **bump the pin in `manifest.yaml` and re-run sync**; the new command/skill/PR-template land and obsolete commands are pruned automatically. Your content — `manifest.yaml`, real `tasks/`, `journal/`, and `rules/` — is never touched.
+- Sync also **materializes repo-root scaffolding** that tools only discover at the root: it copies `.octospec/.claude/` (the `/octospec` command + workflow skill) to the repo-root `.claude/`, and `.octospec/.github/PULL_REQUEST_TEMPLATE.md` to `.github/`. **octospec-managed** files (the `octospec` command, the `octospec-*` skills, the PR template) are refreshed from source every run; a file you authored yourself under `.claude/` is install-if-missing and left untouched. It also **prunes** octospec-managed root commands (`.claude/commands/octospec*.md`) that the pinned version no longer ships, so an upgrade that removes a command actually removes it (never a user's own commands).
+- **Upgrade in one step.** Sync refreshes the octospec-managed surfaces — the vendored `.octospec/.claude/`, `.octospec/.github/`, the fill-in templates, AND the materialized repo-root skill / command / PR template — from `GLOBAL_SRC` on every run, the same way it refreshes `_global/`. So to upgrade you only **bump the pin in `manifest.yaml` and re-run sync**; the new command/skill/PR-template land and obsolete commands are pruned automatically. Your content — `manifest.yaml`, real `tasks/`, `journal/`, `rules/`, and any non-octospec files you added under `.claude/` — is never touched.
 - Re-run any time you bump the pin; it is idempotent. A second run reports the root scaffolding as already present.
 - The script vendored under `.octospec/scripts/` is a byte-for-byte copy of the canonical `scripts/octospec-sync.sh` in this repo; CI (`scripts/test_octospec_sync_sh.sh`) asserts they stay identical, so the copy can never silently drift from the tested source. To upgrade the tooling **itself** (the sync script), re-copy the template `scripts/` from a newer octo-spec checkout — this is the one managed surface sync can't refresh in place (it is the running script).
 

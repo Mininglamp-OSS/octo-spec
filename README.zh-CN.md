@@ -94,7 +94,7 @@ export GLOBAL_SRC=/path/to/octo-spec
 
 **接下来 loop 怎么触发:** 跟 Claude Code 说「加个功能」/「修这个 bug」(workflow skill
 自动触发),或者用一个命令显式驱动单个阶段(`/octospec discover|plan|implement|verify|iterate|finish`,
-以及 `approve`)。6 阶段循环由 **agent** 执行 —— 没有可粘贴的 loop CLI(见下方
+以及 `approve`、`autopilot`、`next`、`status`)。6 阶段循环由 **agent** 执行 —— 没有可粘贴的 loop CLI(见下方
 [6 阶段循环](#6-阶段循环))。
 
 关于 Claude Code 的命令工作流,见 [`docs/CLAUDE-WORKFLOW.md`](docs/CLAUDE-WORKFLOW.md)。
@@ -104,7 +104,7 @@ export GLOBAL_SRC=/path/to/octo-spec
 | 能力 | 它带来的改变 |
 |---|---|
 | **规则自动注入** | 在 `.octospec/rules/` 里把约定写一次,然后让相关上下文被注入到每次 AI 会话中,而不必反复重复你自己。 |
-| **以任务为中心的工作流** | 把探索笔记(discovery)、任务简报(spec)和状态都放在 `.octospec/tasks/` 里,让 AI 的工作保持结构化。 |
+| **以任务为中心的工作流** | 把探索笔记(discovery)、任务规格(spec)和状态都放在 `.octospec/tasks/` 里,让 AI 的工作保持结构化。 |
 | **项目记忆** | `.octospec/journal/` 中的日志保留了上一次发生过什么,这样每个新会话都能带着真实上下文起步。 |
 | **团队共享标准** | 规格存在仓库里,因此某个人来之不易的一条规则能惠及整个团队。 |
 
@@ -251,8 +251,9 @@ merge。删掉 `.octospec/` 即可完全回滚。
 <summary><strong>为什么 sync 在 <code>.octospec/</code> 之外也写了文件?</strong></summary>
 
 这是有意为之。Claude Code 只在仓库根 `.claude/` 发现 slash 命令 / skill,GitHub 也只在
-仓库根 `.github/` 套用 PR 模板。所以 sync 把这些从 `.octospec/` 物化到根目录 ——
-install-if-missing(绝不覆盖你已自定义的文件),且重跑幂等。
+仓库根 `.github/` 套用 PR 模板。所以 sync 把这些从 `.octospec/` 物化到根目录 —— **octospec
+托管**的文件(`/octospec` 命令、`octospec-*` skill、PR 模板)每次运行都从源刷新,保证升级能落地;
+你自己在 `.claude/` 下新增的文件则是 install-if-missing、保持不动。重跑幂等。
 </details>
 
 ## 许可证
@@ -266,8 +267,8 @@ octo-spec 采用 **Apache License 2.0** 许可。见 [LICENSE](LICENSE) 和 [NOT
 
 - 模板自带它自己的 `scripts/`(`octospec-sync.sh`),所以被复制出来的 `.octospec/` 自身就带着 sync 脚本 —— 你不需要为了定位脚本而保留一条回到 octo-spec checkout 的路径。全局规则在 sync 时仍然来源于一个 octo-spec checkout(见 `GLOBAL_SRC`)。
 - sync 会把全局规则 vendor 进被 git 忽略的 `.octospec/_global/`。它**不**写 `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`QWEN.md` —— octospec 靠 `.claude/` 下的 skill + 命令被发现(agent 指令块注入机制已移除)。
-- sync 还会**物化仓库根脚手架**(工具只在仓库根才能发现的那部分):把 `.octospec/.claude/`(`/octospec` 命令 + workflow skill)复制到仓库根 `.claude/`,把 `.octospec/.github/PULL_REQUEST_TEMPLATE.md` 复制到 `.github/`。这是 install-if-missing —— 目标位置已存在的文件保持不动,因此手写的自定义内容绝不会被覆盖。它还会**清除**(prune)pin 版本已不再提供的 octospec 托管命令(`.claude/commands/octospec*.md`),但绝不动你自己的命令。
-- **一步升级。** sync 每次运行都会从 `GLOBAL_SRC` 刷新 octospec 托管的模板面(`.octospec/.claude/`、`.octospec/.github/`、以及填空模板)—— 与刷新 `_global/` 同一套机制。所以升级只需 **bump `manifest.yaml` 的 pin 再重跑 sync**;新命令/skill/PR 模板会落地,过时命令被自动清除。你自己的内容(`manifest.yaml`、真实的 `tasks/`、`journal/`、`rules/`)绝不会被动。
+- sync 还会**物化仓库根脚手架**(工具只在仓库根才能发现的那部分):把 `.octospec/.claude/`(`/octospec` 命令 + workflow skill)复制到仓库根 `.claude/`,把 `.octospec/.github/PULL_REQUEST_TEMPLATE.md` 复制到 `.github/`。**octospec 托管**的文件(`octospec` 命令、`octospec-*` skill、PR 模板)每次运行都从源刷新;你自己在 `.claude/` 下新增的文件则是 install-if-missing、保持不动。它还会**清除**(prune)pin 版本已不再提供的 octospec 托管命令(`.claude/commands/octospec*.md`),但绝不动你自己的命令。
+- **一步升级。** sync 每次运行都会从 `GLOBAL_SRC` 刷新 octospec 托管的所有面 —— vendored 的 `.octospec/.claude/`、`.octospec/.github/`、填空模板,以及物化到仓库根的 skill / 命令 / PR 模板 —— 与刷新 `_global/` 同一套机制。所以升级只需 **bump `manifest.yaml` 的 pin 再重跑 sync**;新命令/skill/PR 模板会落地,过时命令被自动清除。你自己的内容(`manifest.yaml`、真实的 `tasks/`、`journal/`、`rules/`,以及你在 `.claude/` 下新增的非 octospec 文件)绝不会被动。
 - vendor 进 `.octospec/scripts/` 的脚本是本仓库中规范来源 `scripts/octospec-sync.sh` 的逐字节副本;CI(`scripts/test_octospec_sync_sh.sh`)会断言它们保持完全一致,因此副本绝不会悄悄偏离被测试过的源。要升级工具**本身**(sync 脚本),就从一个更新的 octo-spec checkout 重新复制模板的 `scripts/` —— 这是 sync 唯一无法原地刷新的托管面(它就是正在运行的脚本)。
 
 </details>

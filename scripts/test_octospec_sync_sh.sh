@@ -313,23 +313,26 @@ if [ "$code8b" -eq 0 ] && [ "$before_claude" = "$after_claude" ] && [ "$before_p
 else
   note FAIL "root-scaffolding sync not idempotent (code=$code8b)"; fail=1
 fi
-if grep -q "kept 3 existing" out2.log && grep -q "PULL_REQUEST_TEMPLATE.md -> kept existing" out2.log; then
-  note ok "idempotent second run reports existing files kept"
+if grep -q "refreshed 3, installed 0" out2.log && grep -q "PULL_REQUEST_TEMPLATE.md -> refreshed from source" out2.log; then
+  note ok "idempotent second run refreshes managed files (content unchanged)"
 else
-  note FAIL "second run did not report kept-existing scaffolding"; fail=1
+  note FAIL "second run did not report managed-file refresh"; fail=1
 fi
 
 cd "$REPO"
 
-# No-clobber: a user's own slash command + PR template survive sync, while
-# missing siblings are still installed.
+# Managed-refresh vs user-file preservation: octospec-owned root files
+# (octospec.md, the workflow skill, the PR template) are REFRESHED from source
+# even if locally edited; a user's OWN non-octospec command is install-if-missing
+# and left untouched.
 tmp9="$(mktemp -d)"; TMP_DIRS+=("$tmp9")
 cd "$tmp9"
 git init -q
 cp -r "$REPO/templates/octospec-init" .octospec
 mkdir -p .claude/commands .github
-printf 'MY CUSTOM COMMAND KEEP ME\n' > .claude/commands/octospec.md
-printf 'MY OWN PR TEMPLATE KEEP ME\n' > .github/PULL_REQUEST_TEMPLATE.md
+printf 'LOCALLY EDITED octospec command\n' > .claude/commands/octospec.md
+printf 'LOCALLY EDITED pr template\n' > .github/PULL_REQUEST_TEMPLATE.md
+printf 'MY OWN DEPLOY CMD KEEP ME\n' > .claude/commands/deploy.md
 
 set +e
 GLOBAL_SRC="$REPO" ./.octospec/scripts/octospec-sync.sh > out.log 2>&1
@@ -337,28 +340,39 @@ code9=$?
 set -e
 
 if [ "$code9" -eq 0 ]; then
-  note ok "no-clobber sync exits 0"
+  note ok "managed-refresh sync exits 0"
 else
-  note FAIL "no-clobber sync exited $code9"; fail=1
+  note FAIL "managed-refresh sync exited $code9"; fail=1
   cat out.log
 fi
 
-if grep -q "MY CUSTOM COMMAND KEEP ME" .claude/commands/octospec.md; then
-  note ok "user's customized slash command left untouched"
+# octospec.md is octospec-owned -> refreshed from source (local edit overwritten).
+if ! grep -q "LOCALLY EDITED" .claude/commands/octospec.md \
+   && cmp -s "$REPO/templates/octospec-init/.claude/commands/octospec.md" .claude/commands/octospec.md; then
+  note ok "octospec.md refreshed from source (octospec-managed)"
 else
-  note FAIL "sync clobbered a user-customized slash command"; fail=1
+  note FAIL "octospec.md was not refreshed from source"; fail=1
 fi
 
-if grep -q "MY OWN PR TEMPLATE KEEP ME" .github/PULL_REQUEST_TEMPLATE.md; then
-  note ok "user's own PR template left untouched"
+# PR template is octospec-managed -> refreshed from source.
+if ! grep -q "LOCALLY EDITED" .github/PULL_REQUEST_TEMPLATE.md \
+   && cmp -s "$REPO/templates/octospec-init/.github/PULL_REQUEST_TEMPLATE.md" .github/PULL_REQUEST_TEMPLATE.md; then
+  note ok "PR template refreshed from source (octospec-managed)"
 else
-  note FAIL "sync clobbered a user-owned PR template"; fail=1
+  note FAIL "PR template was not refreshed from source"; fail=1
+fi
+
+# A user's own non-octospec command is left untouched (install-if-missing).
+if grep -q "MY OWN DEPLOY CMD KEEP ME" .claude/commands/deploy.md; then
+  note ok "user's own non-octospec command left untouched"
+else
+  note FAIL "sync clobbered a user's non-octospec command"; fail=1
 fi
 
 if [ -f .claude/skills/octospec-workflow/SKILL.md ] && [ -f .claude/skills/octospec-init/SKILL.md ]; then
-  note ok "missing scaffolding still installed alongside the user's own command"
+  note ok "workflow + init skills materialized to root"
 else
-  note FAIL "sync skipped installing missing scaffolding"; fail=1
+  note FAIL "sync skipped installing the skills"; fail=1
 fi
 
 cd "$REPO"
@@ -376,12 +390,16 @@ cd "$tmp10"
 git init -q
 # A 1.x-style vendored tree: old commands, old skill, NO octospec.md router.
 mkdir -p .octospec/.claude/commands .octospec/.claude/skills/octospec-workflow
-mkdir -p .octospec/scripts .claude/commands
+mkdir -p .octospec/scripts .claude/commands .claude/skills/octospec-workflow .github
 for c in plan go check finish; do
   printf 'v1 %s\n' "$c" > ".octospec/.claude/commands/octospec-$c.md"
   printf 'v1 %s\n' "$c" > ".claude/commands/octospec-$c.md"   # root mirror
 done
 printf 'v1 skill\n' > .octospec/.claude/skills/octospec-workflow/SKILL.md
+# STALE ROOT content with a stable path (skill + PR template) — the class the
+# review found: copy-if-absent would freeze these at v1 on upgrade.
+printf 'OLD SKILL: flow is guidance, NO approval gate\n' > .claude/skills/octospec-workflow/SKILL.md
+printf 'OLD PR TEMPLATE referencing brief.md\n' > .github/PULL_REQUEST_TEMPLATE.md
 # pin bumped to the current VERSION (the documented upgrade action)
 printf 'inherits: octo-spec@%s\n' "$SRC_VER" > .octospec/manifest.yaml
 # scripts/ re-copied on upgrade (README step); this is what runs the sync.
@@ -425,10 +443,29 @@ else
   note FAIL "octospec.md router missing at root after upgrade"; fail=1
 fi
 
-if grep -q "MY DEPLOY CMD KEEP ME" .claude/commands/deploy.md 2>/dev/null; then
-  note ok "user's own non-octospec command left untouched by prune"
+# THE FIX: a stable-path ROOT skill with stale content must be REFRESHED (not
+# frozen). Assert the OLD marker is gone and it matches the current source.
+if ! grep -q "OLD SKILL" .claude/skills/octospec-workflow/SKILL.md \
+   && cmp -s "$REPO/templates/octospec-init/.claude/skills/octospec-workflow/SKILL.md" \
+             .claude/skills/octospec-workflow/SKILL.md; then
+  note ok "stale ROOT workflow skill refreshed to current source on upgrade"
 else
-  note FAIL "prune removed a user's non-octospec command"; fail=1
+  note FAIL "stale ROOT workflow skill NOT refreshed → gate-describing skill persists"; fail=1
+fi
+
+# Same for the stable-path ROOT PR template.
+if ! grep -q "OLD PR TEMPLATE" .github/PULL_REQUEST_TEMPLATE.md \
+   && cmp -s "$REPO/templates/octospec-init/.github/PULL_REQUEST_TEMPLATE.md" \
+             .github/PULL_REQUEST_TEMPLATE.md; then
+  note ok "stale ROOT PR template refreshed to current source on upgrade"
+else
+  note FAIL "stale ROOT PR template NOT refreshed"; fail=1
+fi
+
+if grep -q "MY DEPLOY CMD KEEP ME" .claude/commands/deploy.md 2>/dev/null; then
+  note ok "user's own non-octospec command left untouched by upgrade"
+else
+  note FAIL "upgrade removed a user's non-octospec command"; fail=1
 fi
 
 cd "$REPO"

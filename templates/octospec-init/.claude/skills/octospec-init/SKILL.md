@@ -90,22 +90,26 @@ command under `.claude/`. Sync does **not** write `CLAUDE.md` / `AGENTS.md` /
 distribution — shipping the skill into other agents' native skill dirs — is a
 future addition, not part of this flow.)
 
-This step is **install-if-missing** at the root: any `.claude/` or `.github/`
-file you have already customized at the root is left untouched, and re-running
-sync is idempotent. It also **prunes** octospec-managed root commands
-(`.claude/commands/octospec*.md`) that the pinned version no longer ships (never
-your own commands). Commit the materialized root `.claude/` and `.github/` so
-teammates get them on a plain `git pull`.
+At the root, sync uses **two policies**: octospec-managed files (the `octospec`
+command, the `octospec-*` skills, the PR template) are **refreshed from source**
+every run so upgrades land; a file you authored yourself under `.claude/` is
+**install-if-missing** and left untouched. Re-running sync is idempotent. It also
+**prunes** octospec-managed root commands (`.claude/commands/octospec*.md`) that
+the pinned version no longer ships (never your own commands). Commit the
+materialized root `.claude/` and `.github/` so teammates get them on a plain
+`git pull`.
 
-> **Upgrading is one step.** Before materializing the root, sync **refreshes the
-> managed template surfaces** (`.octospec/.claude/`, `.octospec/.github/`, and the
-> fill-in templates) from `GLOBAL_SRC` — the same freshness model as `_global/`.
-> So to move to a newer octo-spec you only bump `inherits:` in `manifest.yaml` and
-> re-run sync from the matching checkout: the new command/skill/PR-template land at
-> the root and obsolete commands are pruned automatically. The one surface sync
-> can't refresh in place is `.octospec/scripts/` itself (it is the running script)
-> — re-copy the template `scripts/` on a tooling upgrade. Your own content
-> (`manifest.yaml`, real `tasks/`, `journal/`, `rules/`) is never touched.
+> **Upgrading is one step.** Sync **refreshes the octospec-managed surfaces** —
+> the vendored `.octospec/.claude/` + `.octospec/.github/` + fill-in templates,
+> AND the materialized repo-root skill / command / PR template — from `GLOBAL_SRC`
+> every run (the same freshness model as `_global/`). So to move to a newer
+> octo-spec you only bump `inherits:` in `manifest.yaml` and re-run sync from the
+> matching checkout: the new command/skill/PR-template land at the root and
+> obsolete commands are pruned automatically. The one surface sync can't refresh
+> in place is `.octospec/scripts/` itself (it is the running script) — re-copy the
+> template `scripts/` on a tooling upgrade. Your own content (`manifest.yaml`,
+> real `tasks/`, `journal/`, `rules/`, and any non-octospec files under
+> `.claude/`) is never touched.
 
 ### 4. Confirm the scaffolding materialized
 
