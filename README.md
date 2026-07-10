@@ -20,58 +20,53 @@ flowchart TD
     subgraph SOT["Source of truth (in the repo)"]
         R[".octospec/rules/<br/>team conventions"]
         G[".octospec/_global/<br/>org-wide rules (synced, git-ignored)"]
+        SK[".claude/skills/octospec-workflow<br/>the 6-phase flow (source of truth)"]
     end
 
-    subgraph Pointers["Entry-point pointers (just signposts)"]
-        C["CLAUDE.md"]
-        A["AGENTS.md"]
-        CMD[".claude/commands/<br/>slash commands"]
+    subgraph Entry["Claude Code entry points"]
+        SKILL["skill (auto-discovered)"]
+        CMD["/octospec command (manual)"]
     end
 
-    subgraph Agents["Whoever does the work"]
-        CC["Claude Code"]
-        CX["Codex"]
-        OC["OpenClaw"]
-    end
+    CC["Claude Code"]
 
-    R --> C & A
+    R --> SK
     G --> R
-    C --> CC
+    SK --> SKILL
+    SK --> CMD
+    SKILL --> CC
     CMD --> CC
-    A --> CX
-    A --> OC
-    OC -.spawns.-> CC
-    OC -.spawns.-> CX
+    R --> CC
 
-    CC & CX & OC --> OUT["Code that follows<br/>the same rules"]
+    CC --> OUT["Code that follows<br/>the same rules"]
 ```
 
-**One source of truth (`.octospec/`), many entry points.**
+**One source of truth (`.octospec/` + the workflow skill), Claude-Code-first.**
 
 AI writes code fast, but every session it starts from scratch — no memory of your
 project, your conventions, or your team's requirements. octo-spec persists specs,
-tasks, and project memory **into your repository**, so any coding agent works to
-your team's engineering standards.
+tasks, and project memory **into your repository**, so Claude Code works to your
+team's engineering standards.
 
 octo-spec is **git-native** and **Claude Code first**: there is no central server
 to run and no extra service to install. Clone the repo, and the shared standards
 come with it — reviewable, versioned, and improvable like any other code artifact.
+(Governance for non-Claude agents happens at the PR gate today; distributing the
+workflow skill into other agents' native skill dirs is planned — see
+[Integration architecture](docs/INTEGRATION.md).)
 
 ## Prerequisites
 
 - **git** — octo-spec is git-native; the standards travel with the repo.
 - **bash** — to run `octospec-sync.sh` (onboarding) and the helper scripts.
-- **python3** — required for onboarding: `octospec-sync.sh` invokes
-  `octospec_sync_block.py` to bootstrap/update agent files (`CLAUDE.md`,
-  `AGENTS.md`, …). The stdlib is enough here — no extra packages.
-- **PyYAML** — additionally needed to run the OKF lint (`octospec-lint.sh`).
+- **PyYAML** — needed to run the OKF lint (`octospec-lint.sh`).
   Install with `pip install pyyaml`.
-- A **coding agent** (Claude Code, Codex, OpenClaw, …) to execute the workflow.
+- **Claude Code** to execute the workflow (the skill + `/octospec` command).
   octo-spec ships the rules and scripts; the agent does the coding.
 
 ## Quick start
 
-**Fastest path (zero shell): paste this one line to your coding agent** (Claude Code / Codex / OpenClaw):
+**Fastest path (zero shell): paste this one line to Claude Code:**
 
 > Read https://raw.githubusercontent.com/Mininglamp-OSS/octo-spec/v2.1.0/BOOTSTRAP.md and follow it to onboard octo-spec into this repo.
 
@@ -91,10 +86,10 @@ cp -r <path-to>/octo-spec/templates/octospec-init .octospec
 #    the pin must match the checkout's VERSION file, or sync fails fast.
 export GLOBAL_SRC=/path/to/octo-spec
 
-# 3. Sync. This vendors the global rules into .octospec/_global/, writes the
-#    octospec block into CLAUDE.md / AGENTS.md, AND materializes the repo-root
-#    scaffolding tools expect: slash commands + the workflow skill to .claude/,
-#    and the PR template to .github/. Works out of the box, idempotent.
+# 3. Sync. This vendors the global rules into .octospec/_global/ AND materializes
+#    the repo-root scaffolding Claude Code expects: the /octospec command + the
+#    workflow skill to .claude/, and the PR template to .github/. It does NOT
+#    touch CLAUDE.md/AGENTS.md. Works out of the box, idempotent.
 ./.octospec/scripts/octospec-sync.sh
 
 # 4. Self-check: run the OKF lint (not vendored — run it from the checkout).
@@ -102,15 +97,16 @@ export GLOBAL_SRC=/path/to/octo-spec
 ```
 
 That's it — **onboarding is complete**. The repo now carries the rules, the
-agent-instruction block, the slash commands (under the repo-root `.claude/`,
-so Claude Code discovers them), and the PR template (under `.github/`). Commit
-the new files (`.octospec/`, root `.claude/`, `.github/`, and the updated
-`CLAUDE.md` / `AGENTS.md`); from here every teammate just `git pull`s.
+`/octospec` command + workflow skill (under the repo-root `.claude/`, so Claude
+Code discovers them), and the PR template (under `.github/`). Commit the new files
+(`.octospec/`, root `.claude/`, `.github/`); from here every teammate just
+`git pull`s.
 
-**How the loop runs from here:** ask your coding agent to "add a feature" / "fix
-this bug", or drive a single phase explicitly with one command
-(`/octospec discover|plan|implement|verify|iterate|finish`, plus `approve`). The
-6-phase loop is executed **by the agent** — there is no loop CLI to paste (see
+**How the loop runs from here:** ask Claude Code to "add a feature" / "fix
+this bug" (the workflow skill triggers), or drive a single phase explicitly with
+one command (`/octospec discover|plan|implement|verify|iterate|finish`, plus
+`approve`). The 6-phase loop is executed **by the agent** — there is no loop CLI
+to paste (see
 [The 6-phase loop](#the-6-phase-loop) below).
 
 See [`docs/CLAUDE-WORKFLOW.md`](docs/CLAUDE-WORKFLOW.md) for the Claude Code
@@ -293,11 +289,11 @@ octo-spec is licensed under the **Apache License 2.0**. See [LICENSE](LICENSE) a
 <details>
 <summary>Sync mechanics & caveats</summary>
 
-- The template ships its own `scripts/` (`octospec-sync.sh` + `octospec_sync_block.py`), so the copied `.octospec/` carries the sync scripts themselves — you don't need a path back into the octo-spec checkout just to locate the scripts. The global rules are still sourced from an octo-spec checkout at sync time (see `GLOBAL_SRC`).
-- Sync vendors the global rules into git-ignored `.octospec/_global/` AND writes the octospec agent-instruction block into your agent files (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` / `QWEN.md`), between managed markers.
-- Sync also **materializes repo-root scaffolding** that tools only discover at the root: it copies `.octospec/.claude/` (slash commands + skill) to the repo-root `.claude/`, and `.octospec/.github/PULL_REQUEST_TEMPLATE.md` to `.github/`. This is install-if-missing — an existing destination file is left untouched, so hand-written customizations are never clobbered. It also **prunes** octospec-managed root commands (`.claude/commands/octospec*.md`) that the pinned version no longer ships, so an upgrade that removes a command actually removes it (never a user's own commands).
-- **Upgrade in one step.** Sync refreshes the octospec-managed template surfaces (`.octospec/.claude/`, `.octospec/.github/`, and the fill-in templates) from `GLOBAL_SRC` on every run — the same way it refreshes `_global/`. So to upgrade you only **bump the pin in `manifest.yaml` and re-run sync**; the new router/skill/PR-template land and obsolete commands are pruned automatically. Your content — `manifest.yaml`, real `tasks/`, `journal/`, and `rules/` — is never touched.
-- Re-run any time you bump the pin; it is idempotent and preserves anything outside the markers — including the file's original line endings (LF/CRLF) and trailing newline. A second run reports the root scaffolding as already present.
-- The scripts vendored under `.octospec/scripts/` are byte-for-byte copies of the canonical `scripts/octospec-sync.sh` and `scripts/octospec_sync_block.py` in this repo; CI (`scripts/test_octospec_sync_sh.sh`) asserts they stay identical, so the copy can never silently drift from the tested source. To upgrade the tooling **itself** (the sync scripts), re-copy the template `scripts/` from a newer octo-spec checkout — this is the one managed surface sync can't refresh in place (it is the running script).
+- The template ships its own `scripts/` (`octospec-sync.sh`), so the copied `.octospec/` carries the sync script itself — you don't need a path back into the octo-spec checkout just to locate it. The global rules are still sourced from an octo-spec checkout at sync time (see `GLOBAL_SRC`).
+- Sync vendors the global rules into git-ignored `.octospec/_global/`. It does **not** write `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`QWEN.md` — octospec is discovered through the Claude Code skill + command under `.claude/` (the agent-instruction injection block was removed).
+- Sync also **materializes repo-root scaffolding** that tools only discover at the root: it copies `.octospec/.claude/` (the `/octospec` command + workflow skill) to the repo-root `.claude/`, and `.octospec/.github/PULL_REQUEST_TEMPLATE.md` to `.github/`. This is install-if-missing — an existing destination file is left untouched, so hand-written customizations are never clobbered. It also **prunes** octospec-managed root commands (`.claude/commands/octospec*.md`) that the pinned version no longer ships, so an upgrade that removes a command actually removes it (never a user's own commands).
+- **Upgrade in one step.** Sync refreshes the octospec-managed template surfaces (`.octospec/.claude/`, `.octospec/.github/`, and the fill-in templates) from `GLOBAL_SRC` on every run — the same way it refreshes `_global/`. So to upgrade you only **bump the pin in `manifest.yaml` and re-run sync**; the new command/skill/PR-template land and obsolete commands are pruned automatically. Your content — `manifest.yaml`, real `tasks/`, `journal/`, and `rules/` — is never touched.
+- Re-run any time you bump the pin; it is idempotent. A second run reports the root scaffolding as already present.
+- The script vendored under `.octospec/scripts/` is a byte-for-byte copy of the canonical `scripts/octospec-sync.sh` in this repo; CI (`scripts/test_octospec_sync_sh.sh`) asserts they stay identical, so the copy can never silently drift from the tested source. To upgrade the tooling **itself** (the sync script), re-copy the template `scripts/` from a newer octo-spec checkout — this is the one managed surface sync can't refresh in place (it is the running script).
 
 </details>

@@ -1,33 +1,32 @@
 #!/usr/bin/env bash
 # octospec-sync — vendor the pinned global ("constitution") rules into a
-# git-ignored local cache, then sync the shared agent-instruction block into
-# the agent-instruction files present in the repo.
+# git-ignored local cache, refresh the octospec-managed template surfaces, and
+# materialize the repo-root scaffolding Claude Code discovers.
 #
 # Inheritance model: vendor snapshot + version pin (NOT git submodule).
 #   - manifest.yaml declares `inherits: octo-spec@<semver>`
 #   - this script fetches that version's global/ into .octospec/_global/
 #   - _global/ is git-ignored; upgrading = bump the pin + re-run this script.
 #
-# Agent-instruction sync: one source of truth (the octo-spec checkout's
-# templates/octospec-init/AGENT-BLOCK.md) is written, idempotently and
-# atomically, between `<!-- octospec:begin -->` / `<!-- octospec:end -->`
-# markers into each agent-instruction file that exists (CLAUDE.md, AGENTS.md,
-# GEMINI.md, QWEN.md). Marker detection is whole-line and fence-aware, and a
-# malformed marker state makes the sync REFUSE that file rather than risk
-# clobbering hand-written content (see scripts/octospec_sync_block.py).
+# What sync does, in order:
+#   1) version-assert (manifest pin == GLOBAL_SRC VERSION), then vendor global/
+#      into .octospec/_global/.
+#   1b) refresh the octospec-MANAGED surfaces from the GLOBAL_SRC template
+#      (.claude/, .github/, and the fill-in _spec/_discovery/_journal templates)
+#      so an upgrade actually delivers the pinned version. User content
+#      (manifest.yaml, tasks/, journal/, rules/) is never touched.
+#   2) materialize repo-root scaffolding tools only discover at the root: copy
+#      .octospec/.claude/ -> repo-root .claude/ (install-if-missing) and prune
+#      octospec-managed root commands the template no longer ships.
 #
-# Bootstrap: CLAUDE.md and AGENTS.md are the two default entry points — whichever
-# is missing is created so BOTH Claude Code (CLAUDE.md) and Codex (AGENTS.md) get
-# the block, even when the repo started with only one of them (the common case for
-# an existing Claude Code repo that has only CLAUDE.md). GEMINI.md / QWEN.md are
-# only updated when they already exist; we never force-create those.
+# This is Claude-only: octospec is discovered via the Claude Code skill/command
+# under .claude/. sync does NOT write CLAUDE.md/AGENTS.md/GEMINI.md/QWEN.md.
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 OCTOSPEC_DIR="$REPO_ROOT/.octospec"
 MANIFEST="$OCTOSPEC_DIR/manifest.yaml"
 GLOBAL_CACHE="$OCTOSPEC_DIR/_global"
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 [ -f "$MANIFEST" ] || { echo "no $MANIFEST"; exit 1; }
 
@@ -106,7 +105,7 @@ if [ -d "$TEMPLATE_SRC" ]; then
   done
   # Individual fill-in templates (never the user's real tasks/journals/rules).
   for f in tasks/_spec.template.md tasks/_discovery.template.md \
-           journal/_journal.template.md AGENT-BLOCK.md; do
+           journal/_journal.template.md; do
     if [ -f "$TEMPLATE_SRC/$f" ]; then
       mkdir -p "$OCTOSPEC_DIR/$(dirname "$f")"
       rm -f "$OCTOSPEC_DIR/$f"
@@ -128,55 +127,7 @@ if ! grep -qxF "_global/" "$GITIGNORE" 2>/dev/null; then
   printf '_global/\n' >> "$GITIGNORE"
 fi
 
-# 2) Sync the shared agent-instruction block into the instruction files present.
-BLOCK_SRC="$GLOBAL_SRC/templates/octospec-init/AGENT-BLOCK.md"
-SYNC_PY="$HERE/octospec_sync_block.py"
-if [ ! -f "$BLOCK_SRC" ]; then
-  echo "octospec: WARNING no AGENT-BLOCK.md at $BLOCK_SRC; skipping instruction sync" >&2
-elif [ ! -f "$SYNC_PY" ]; then
-  echo "octospec: WARNING no octospec_sync_block.py at $SYNC_PY; skipping instruction sync" >&2
-else
-  # Two default entry points (CLAUDE.md for Claude Code, AGENTS.md for Codex)
-  # are created if missing; the rest are only synced when already present.
-  DEFAULTS="CLAUDE.md AGENTS.md"
-  OPTIONAL="GEMINI.md QWEN.md"
-  rc=0
-  # Per-file isolation: one refused/failed file must not abort the rest, but it
-  # MUST be reflected in the final exit code.
-  for t in $DEFAULTS; do
-    if [ -f "$REPO_ROOT/$t" ]; then
-      if res="$(python3 "$SYNC_PY" "$REPO_ROOT/$t" "$BLOCK_SRC" 2>&1)"; then
-        echo "octospec: $t -> $res"
-      else
-        echo "octospec: $t -> FAILED: $res" >&2
-        rc=1
-      fi
-    else
-      echo "octospec: $t missing; bootstrapping"
-      if res="$(python3 "$SYNC_PY" "$REPO_ROOT/$t" "$BLOCK_SRC" --create 2>&1)"; then
-        echo "octospec: $t -> $res"
-      else
-        echo "octospec: $t -> FAILED: $res" >&2
-        rc=1
-      fi
-    fi
-  done
-  for t in $OPTIONAL; do
-    [ -f "$REPO_ROOT/$t" ] || continue
-    if res="$(python3 "$SYNC_PY" "$REPO_ROOT/$t" "$BLOCK_SRC" 2>&1)"; then
-      echo "octospec: $t -> $res"
-    else
-      echo "octospec: $t -> FAILED: $res" >&2
-      rc=1
-    fi
-  done
-  if [ "$rc" -ne 0 ]; then
-    echo "octospec: one or more agent files failed to sync" >&2
-    exit "$rc"
-  fi
-fi
-
-# 3) Materialize repo-root scaffolding that tools only discover at the root.
+# 2) Materialize repo-root scaffolding that tools only discover at the root.
 # The template tree carries .octospec/.claude/ (slash commands + skills) and
 # .octospec/.github/PULL_REQUEST_TEMPLATE.md, but Claude Code only discovers
 # slash commands/skills under the REPO ROOT .claude/, and GitHub only applies a
@@ -209,7 +160,7 @@ EOF
 
 install_missing "$OCTOSPEC_DIR/.claude" "$REPO_ROOT/.claude" ".claude (slash commands + skills)"
 
-# 3b) Prune octospec-managed command files that no longer exist in the template.
+# 2b) Prune octospec-managed command files that no longer exist in the template.
 # install_missing is copy-if-absent, so a command REMOVED from the template (e.g.
 # the v1 octospec-{plan,go,check,finish} consolidated into one octospec.md) would
 # otherwise linger at the repo root forever and keep offering a pre-gate flow that

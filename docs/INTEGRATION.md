@@ -1,36 +1,35 @@
-# Integration architecture — how every entry point picks up octospec
+# Integration architecture — how code written here picks up octospec
 
-octo-spec is designed so that **the engineering standard applies no matter how
-code gets written** — a developer in Claude Code, a bot in Octo, a CLI agent
-like Codex, or an orchestrator dispatching work. This document explains the
-model and how each real-world entry point connects.
+octo-spec is **Claude-Code-first**. This document explains how the standard
+reaches the code that gets written, and where it is actually enforced.
+
+> **Scope (phase 1): Claude Code.** octospec is discovered through Claude Code's
+> skill + command under `.claude/`. Distributing the workflow into other agents'
+> native skill directories (Codex `.codex/skills`, Gemini `.gemini/skills`, …) is
+> a planned future addition — see "Adding other agents later". There is **no
+> injected instruction block** in `CLAUDE.md`/`AGENTS.md`; that machinery was
+> removed in favor of the skill.
 
 ## The two-layer model
 
-Don't try to teach every entry point perfectly. Instead, rely on two layers that
-together cover all paths:
+Two layers together cover the paths that matter:
 
-### Layer 1 — Active layer (auto-loaded, best-effort)
+### Layer 1 — Active layer (skill discovery, best-effort)
 
-Any agent that runs **inside a repo checkout** automatically reads that repo's
-agent-instruction file and the `.octospec/` directory:
+A developer working in **Claude Code inside the repo checkout** gets octospec
+automatically:
 
-- Claude Code reads `CLAUDE.md`
-- Codex and most other agents read `AGENTS.md`
-- (future: Gemini reads `GEMINI.md`, Cursor reads `.cursor/rules`, etc.)
+- The **`octospec-workflow` skill** (committed under `.claude/skills/`) is
+  auto-discovered — its name+description are always in context, and Claude loads
+  the full 6-phase flow when a non-trivial coding task matches. This is the single
+  source of truth for the workflow.
+- The **`/octospec <phase> <slug>` command** (under `.claude/commands/`) is a
+  manual entry into the same skill, for driving one phase on demand.
+- The repo's `.octospec/` (rules, specs, journals) is read by both.
 
-octo-spec keeps **one source of truth** for the instruction block and syncs it
-into the repo's agent-instruction files (via `octospec-sync`): the two defaults
-(`CLAUDE.md`, `AGENTS.md`) are **created if missing** so checkout-anchored agents
-always find the block, while other files (`GEMINI.md`, `QWEN.md`, …) are synced
-only when they already exist. It uses
-`<!-- octospec:begin -->` / `<!-- octospec:end -->` markers. The wording is
-tool-neutral, so whichever file an agent reads, it gets the same guidance:
-read the matching `.octospec/rules/`, capture a task spec, fill the PR's
-comprehension questions.
-
-This layer makes agents **do the right thing by default**. It is guidance, not a
-hard gate — an agent could ignore it.
+This layer makes Claude Code **do the right thing by default**. It is guidance,
+not a hard gate — the model could fail to trigger the skill, or a different tool
+could be used. That's fine, because of Layer 2.
 
 ### Layer 2 — Enforcement layer (at the PR, entry-point-independent)
 
@@ -47,53 +46,57 @@ where the standard is actually enforced, regardless of who or what wrote the cod
   convention, planned to be CI-enforced.*
 
 Because enforcement lives at the PR, **Layer 1 doesn't have to be perfect**.
-Even if an entry point fails to auto-load the rules, load-bearing changes still
-can't merge without passing Layer 2.
+Even if the skill never triggers, or code is written by a tool that doesn't know
+octospec, load-bearing changes still can't merge without passing Layer 2.
 
 ## Entry points → how each connects
 
-| Scenario | Who writes the code | Reads instructions from | Auto? | Notes |
+| Scenario | Who writes the code | Picks up octospec via | Auto? | Notes |
 |---|---|---|---|---|
-| **1. Local Claude Code** | Claude Code in the checkout | `CLAUDE.md` + `.octospec/` | ✅ auto | Plus the `/octospec <phase>` command (incl. `autopilot`) |
-| **2b. Orchestrator → local Claude Code / Codex** | CC / Codex spawned in the checkout | `CLAUDE.md` / `AGENTS.md` | ✅ auto | As long as the spawn cwd is the repo root |
-| **2c. Orchestrator → dispatch system** | Agent runs CC/Codex in a checkout | `CLAUDE.md` / `AGENTS.md` + spec | ✅ auto | Dispatch spec adds a "read `.octospec`" pointer; dogfooded on `octo-server` (issue #344 → PR #420) |
-| **2a. Orchestrator writes code directly** | The orchestrator itself (not checkout-anchored) | — | ⚠️ **not auto** | See decision below |
+| **1. Local Claude Code** | Claude Code in the checkout | `octospec-workflow` skill + `/octospec` command + `.octospec/` | ✅ auto | The primary, fully-supported path |
+| **2. Orchestrator → local Claude Code** | Claude Code spawned in the checkout | same skill/command | ✅ auto | As long as the spawn cwd is the repo root |
+| **3. Orchestrator → dispatch system** | A dispatched Claude Code in a checkout | skill/command + dispatch brief | ✅ auto | The dispatch brief adds a "read `.octospec/`" pointer |
+| **4. Orchestrator writes code directly** | The orchestrator itself (not checkout-anchored) | — | ⚠️ **not auto** | See decision below |
+| **5. A non-Claude agent (Codex/Gemini/…)** | That agent in the checkout | — | ⚠️ **not yet** | Skill distribution to other agents is future work; today Layer 2 (the PR) still governs it |
 
-### Decision: scenario 2a is closed, not patched
+### Decision: scenario 4 is closed, not patched
 
 An orchestrator-style gateway agent is **not anchored to any checkout**; its
 system prompt is global, not per-repo, so it cannot reliably auto-load a specific
 repo's `.octospec/`. Rather than bolt on a fragile rule ("remember to read the
 repo's spec before writing"), which will eventually drift and be forgotten:
 
-> **Governed-repo code is always written by a checkout-anchored executor**
-> (local Claude Code, an ACP agent like Codex, or a dispatched agent). The
-> orchestrator does what it is best at — gathering requirements, decomposing
-> work, and dispatching — and spawns an anchored agent to write the code instead
-> of writing it itself.
+> **Governed-repo code is always written by a checkout-anchored Claude Code**
+> (local, or dispatched). The orchestrator does what it is best at — gathering
+> requirements, decomposing work, and dispatching — and spawns an anchored agent
+> to write the code instead of writing it itself.
 
 This keeps **exactly one enforced path**: the orchestrator never edits a governed
 repo directly, so octospec is always in effect. If a change ever did slip through
 directly, Layer 2 (the PR gate) still catches load-bearing work.
 
-## Adding a new entry point later
+## Adding other agents later
 
-1. If it's a new agent tool with its own instruction file (e.g. `GEMINI.md`),
-   add that filename to `octospec-sync` so the shared block is synced there too.
-2. If it's a new way to dispatch work, make sure its task spec includes the
-   "read `.octospec/`" pointer.
-3. You never need to weaken Layer 2 — it's the safety net for every path.
+Every mainstream coding agent has a **native skills mechanism** with its own
+directory (Codex `.codex/skills` / `.agents/skills`, Gemini CLI `.gemini/skills`,
+Cursor `.cursor/rules`, …), all progressive-disclosure like Claude's. So the
+future multi-agent path is to **distribute the same `octospec-workflow` skill
+into each agent's native dir** (via `octospec-sync`), NOT to inject a duplicated
+instruction block into `AGENTS.md`/`GEMINI.md`. That keeps one source of truth
+(the skill) with per-agent delivery. Until then, non-Claude agents are governed
+by Layer 2 (the PR) like any other path. You never need to weaken Layer 2 — it's
+the safety net for every path.
 
 ## Host adapters (`integrations/`)
 
-Beyond agents that read `.octospec/` in-repo, octo-spec ships optional **host
+Beyond a developer running Claude Code in-repo, octo-spec ships optional **host
 adapters** under `integrations/` that let a bot drive the whole flow for an end
 user (message → onboarding → coding → PR), without the user opening a coding
 agent.
 
 This does **not** change the spec-only contract. Adapters are thin glue: they
 route intent, launch an external coding engine, and check completion. The engine
-(e.g. Claude Code headless `claude -p`) is still external; octo-spec itself ships
+(Claude Code headless `claude -p`) is still external; octo-spec itself ships
 no runtime engine. See `integrations/README.md` for the layering and
 `integrations/octo/skills/octo-code/` for the first adapter (ACP-free, headless
 engine, no multica dependency).

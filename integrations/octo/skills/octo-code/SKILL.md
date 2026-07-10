@@ -67,7 +67,7 @@ questions, discussions, or product decisions.
    explicit step first.
 
 3. **Build the task prompt.** Instruct the engine to:
-   - read `CLAUDE.md` and follow the octo-spec standard;
+   - follow the `octospec-workflow` skill (under `.claude/`) and the octo-spec standard;
    - run the full 6-phase loop: Discover (create the task branch, write + commit
      `.octospec/tasks/<slug>/discovery.md`) → Plan (write + commit
      `.octospec/tasks/<slug>/spec.md`, revision 1) → **STOP for the approval

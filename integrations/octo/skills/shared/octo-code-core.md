@@ -101,13 +101,13 @@ Notes:
   blanket `bypassPermissions`. Use `bypassPermissions` only inside a disposable
   sandbox. (Unattended runs have no human to approve a prompt; an unscoped run
   with no pre-approval just dies on the first tool gate.)
-- **Do not use `--bare`.** Bare mode skips `CLAUDE.md` / skill auto-discovery,
-  but octo-spec injects its rules *through* `CLAUDE.md` and `.octospec/`. Bare
-  would blind the agent to the standard.
+- **Do not use `--bare`.** Bare mode skips skill auto-discovery, but octo-spec is
+  discovered *through* the `octospec-workflow` skill under `.claude/` (plus the
+  `.octospec/` rules). Bare would blind the agent to the standard.
 - **cwd** is the per-task worktree from preflight.
-- The task prompt must tell the agent to read `CLAUDE.md` and run the full
-  6-phase loop (Discover → Plan → Implement → Verify → Iterate → Finish),
-  **pausing after Plan for the approval gate** (§B2) and including the
+- The task prompt must tell the agent to follow the `octospec-workflow` skill and
+  run the full 6-phase loop (Discover → Plan → Implement → Verify → Iterate →
+  Finish), **pausing after Plan for the approval gate** (§B2) and including the
   Finish-phase learning reflow. Discover creates the task branch and commits the
   spec (discovery + spec) onto it — here the per-task **worktree branch from
   §A.4 IS that branch**, so the spec rides into the PR with no manual copy.
@@ -220,9 +220,10 @@ GLOBAL_SRC="<octo-spec>" "<repo>/.octospec/scripts/octospec-sync.sh"
 "<octo-spec>/scripts/octospec-lint.sh" "<repo>"
 ```
 
-Commit `.octospec/`, root `.claude/`, `.github/PULL_REQUEST_TEMPLATE.md`, and the
-updated `CLAUDE.md` / `AGENTS.md` (a one-time onboarding PR), then proceed to the
-coding task.
+Commit `.octospec/`, the materialized root `.claude/`, and
+`.github/PULL_REQUEST_TEMPLATE.md` (a one-time onboarding PR), then proceed to the
+coding task. (Sync does not write `CLAUDE.md`/`AGENTS.md`; octospec is discovered
+via the skill + command under `.claude/`.)
 
 ---
 

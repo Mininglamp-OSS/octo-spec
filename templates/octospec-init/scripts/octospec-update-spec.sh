@@ -33,8 +33,8 @@
 # draft is OVERWRITTEN in place; with --skip-existing an existing file is left
 # untouched.
 #
-# No hard external dependencies. Style mirrors octospec-sync.sh /
-# octospec_sync_block.py (set -euo pipefail, atomic writes, explicit refusals).
+# No hard external dependencies. Style mirrors octospec-sync.sh (set -euo
+# pipefail, atomic writes, explicit refusals).
 #
 # Usage:
 #   octospec-update-spec.sh --slug <slug> --kind rule [--learning <text>] [opts]
@@ -214,7 +214,7 @@ csv_to_flow_seq() {
   printf '[%s]' "$out"
 }
 
-# Atomic write: temp file in target dir + mv (mirrors octospec_sync_block.py).
+# Atomic write: temp file in target dir + mv (mirrors octospec-sync.sh).
 atomic_write() {
   local target="$1" content="$2" dir tmp
   dir="$(dirname "$target")"

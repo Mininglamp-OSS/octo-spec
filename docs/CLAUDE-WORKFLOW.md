@@ -43,18 +43,14 @@ make it *binding*.
    block to your repo's gate commands (language-agnostic — Go/TS/Python/…).
 3. Run `octospec-sync` (with `GLOBAL_SRC` pointing at a checkout of octo-spec
    at the pinned version). This pulls global rules into git-ignored
-   `.octospec/_global/`, writes the octospec block into your agent files
-   (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` / `QWEN.md`) between
-   `<!-- octospec:begin -->` / `<!-- octospec:end -->` markers — the sync owns
-   that region; everything outside it is yours. `CLAUDE.md` and `AGENTS.md` are
-   the two default entry points — whichever is missing is created so both Claude
-   Code and Codex get the block; `GEMINI.md` / `QWEN.md` are synced only when they
-   already exist. Finally it **materializes the repo-root scaffolding** that
-   tools only discover at the root: it copies `.octospec/.claude/` to `.claude/`
-   (so Claude Code finds the `/octospec` command and skill) and
+   `.octospec/_global/` and **materializes the repo-root scaffolding** that tools
+   only discover at the root: it copies `.octospec/.claude/` to `.claude/` (so
+   Claude Code finds the `/octospec` command and the workflow skill) and
    `.octospec/.github/PULL_REQUEST_TEMPLATE.md` to `.github/` (so GitHub applies
    the PR template). This is install-if-missing — any file you have already
-   customized at the root is left untouched, and re-running is idempotent.
+   customized at the root is left untouched, and re-running is idempotent. Sync
+   does **not** write `CLAUDE.md` / `AGENTS.md` — octospec is discovered through
+   the Claude Code skill + command under `.claude/`.
 4. Commit (including the materialized root `.claude/` and `.github/`). From here,
    every team member just pulls.
 

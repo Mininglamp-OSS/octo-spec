@@ -13,34 +13,30 @@ flowchart TD
     subgraph SOT["Source of truth (in the repo)"]
         R[".octospec/rules/<br/>team conventions"]
         G[".octospec/_global/<br/>org-wide rules (synced, git-ignored)"]
+        SK[".claude/skills/octospec-workflow<br/>6-phase flow (source of truth)"]
     end
 
-    subgraph Pointers["Entry-point pointers (just signposts)"]
-        C["CLAUDE.md"]
-        A["AGENTS.md"]
-        CMD[".claude/commands/<br/>slash commands"]
+    subgraph Entry["Claude Code entry points"]
+        SKILL["skill (auto-discovered)"]
+        CMD["/octospec command (manual)"]
     end
 
-    subgraph Agents["Whoever does the work"]
-        CC["Claude Code"]
-        CX["Codex"]
-        OC["OpenClaw"]
-    end
+    CC["Claude Code"]
 
-    R --> C & A
+    R --> SK
     G --> R
-    C --> CC
+    SK --> SKILL
+    SK --> CMD
+    SKILL --> CC
     CMD --> CC
-    A --> CX
-    A --> OC
-    OC -.spawns.-> CC
-    OC -.spawns.-> CX
+    R --> CC
 
-    CC & CX & OC --> OUT["Code that follows<br/>the same rules"]
+    CC --> OUT["Code that follows<br/>the same rules"]
 ```
 
-**One source of truth (`.octospec/`), many entry points.** Adding a new tool =
-add a signpost, not a new rulebook.
+**One source of truth (`.octospec/` + the workflow skill), Claude-Code-first.**
+Governance for non-Claude agents happens at the PR gate; distributing the skill
+to their native dirs is planned (see `docs/INTEGRATION.md`).
 
 ---
 
@@ -110,17 +106,20 @@ AI:   Implement (Red→Green→Refactor) → independent Verify → (impl/test-o
       (stops for you only if the spec must change, or retries run out)
 ```
 
-### B) OpenClaw drives a local Claude Code / Codex
+### B) An orchestrator drives a local Claude Code
 
-Nothing special to do. The spawned agent works in the same checkout, so it reads
-the same `.octospec/`. For Codex (reads `AGENTS.md`), the octospec pointer is
-already there; for a code review, point Codex at the rules the diff touches.
+Nothing special to do. The spawned Claude Code works in the same checkout, so it
+auto-discovers the `octospec-workflow` skill and reads the same `.octospec/`. The
+orchestrator gathers requirements and dispatches; the anchored Claude Code writes
+the code under the standard.
 
-### C) Pure agent / no slash commands
+### C) A non-Claude agent, or any agent without the skill
 
 Any agent that opens the repo can read `.octospec/rules/_index.yaml`, see which
-rules match the files it's touching, and read those rule files directly. The
-slash commands are a convenience, not a requirement.
+rules match the files it's touching, and read those rule files directly — the
+standard is plain files in the repo. octospec doesn't yet ship its workflow into
+non-Claude agents' skill dirs (planned — see `docs/INTEGRATION.md`), so for those
+the **PR gate** is what enforces the standard.
 
 ---
 

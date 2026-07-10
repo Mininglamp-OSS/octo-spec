@@ -5,6 +5,38 @@ Change history for the global ("constitution") rules, following the
 change-log convention (§7). Newest entries first. Each entry records
 Creation / Update / Deprecation of a knowledge unit.
 
+## 2026-07-10 (skill-first, Claude-only)
+
+- **Deprecation (breaking onboarding change)** — **Removed the agent-instruction
+  injection machine.** octospec no longer writes an
+  `<!-- octospec:begin -->…<!-- octospec:end -->` block into
+  `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`QWEN.md`. The full 6-phase workflow was
+  being duplicated across the `octospec-workflow` skill, the `/octospec` command,
+  AND that injected block — so the "single source of truth" claim was false and
+  every workflow change had to be edited in ≥2 places (reviewers repeatedly caught
+  the drift). The block's only purpose was reaching non-Claude agents, but Codex /
+  Gemini / Cursor / Windsurf all have their own native skills dirs and Codex has
+  no documented auto-follow of a pointer inside `AGENTS.md` — so a "thick"
+  injected block was the wrong shim.
+  - Deleted `AGENT-BLOCK.md`, `octospec_sync_block.py` (+ its regression test),
+    the CI sync-block step, and sync's step-2 injection loop + AGENTS/GEMINI/QWEN
+    bootstrap. `octospec-sync.sh` now only vendors `_global/`, refreshes the
+    managed template surfaces, and materializes the repo-root `.claude/`/`.github/`
+    scaffolding + prunes obsolete commands. It touches no agent-instruction files.
+  - The **`octospec-workflow` skill is the single workflow source of truth**;
+    `/octospec` is a Claude-only thin entry into it. octospec is discovered via
+    Claude Code skill progressive-disclosure — there is no always-on injected
+    block.
+  - **Phase 1 is Claude-only by decision.** Distributing the skill into other
+    agents' native skill dirs (`.codex/skills`, `.gemini/skills`, …) is deferred
+    to a future phase; until then non-Claude paths are governed by the PR gate.
+  - **Migration:** already-onboarded repos keep an inert `octospec:begin/end`
+    block in their `CLAUDE.md`/`AGENTS.md`. Sync no longer manages it — it's
+    harmless stale content you may delete by hand. Re-run sync (bump nothing) to
+    pick up the new behavior; the skill + command drive Claude Code now. Sync does
+    not auto-strip the block (deleting from a user's CLAUDE.md is riskier than
+    leaving it).
+
 ## 2026-07-10 (PR #21 review fixes)
 
 - **Deprecation** — **Removed `learnings/pending/`.** It was a permanently-empty
