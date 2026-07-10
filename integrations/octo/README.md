@@ -3,7 +3,7 @@
 The **octo coding flow**: a team member sends a plain-language coding request in
 octo (an IM surface), and a bot carries it through the full octo-spec loop —
 onboarding check → Claude Code (headless) running the 6-phase loop (pausing after
-Plan for human approval of the brief) → a PR — and
+Plan for human approval of the spec) → a PR — and
 reports back in the originating thread. The user never opens Claude Code.
 
 > **What this is, technically.** The current implementation is an OpenClaw bot
@@ -34,7 +34,7 @@ reports back in the originating thread. The user never opens Claude Code.
    a chat message). When the doctor is all-green, you're ready.
 2. **Use** — plain language: *"use octo-code to add X to repo Y"* /
    *"octo-code: fix bug Z in repo W"*. The bot runs the 6-phase loop, posts the
-   brief for your `approve`, then replies
+   spec for your `approve`, then replies
    with the PR URL, test result, and cost. You just review the PR.
 
 ## The engine: headless `claude -p`, not ACP

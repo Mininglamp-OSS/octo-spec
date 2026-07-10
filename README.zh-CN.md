@@ -71,7 +71,7 @@ octo-spec 是 **git 原生(git-native)** 且 **Claude Code 优先(Claude Code fi
 
 **最快路径(零 shell):把下面这句话粘给你的编码 agent**(Claude Code / Codex / OpenClaw):
 
-> 读取 https://raw.githubusercontent.com/Mininglamp-OSS/octo-spec/v2.0.0/BOOTSTRAP.md 并按它把 octo-spec 接入这个仓库。
+> 读取 https://raw.githubusercontent.com/Mininglamp-OSS/octo-spec/v2.1.0/BOOTSTRAP.md 并按它把 octo-spec 接入这个仓库。
 
 它会克隆钉死版本的 octo-spec,再帮你跑标准的 octospec-init 接入。下面的手动步骤仍是 source of truth。
 
@@ -113,7 +113,7 @@ export GLOBAL_SRC=/path/to/octo-spec
 | 能力 | 它带来的改变 |
 |---|---|
 | **规则自动注入** | 在 `.octospec/rules/` 里把约定写一次,然后让相关上下文被注入到每次 AI 会话中,而不必反复重复你自己。 |
-| **以任务为中心的工作流** | 把探索笔记(discovery)、任务简报(brief)和状态都放在 `.octospec/tasks/` 里,让 AI 的工作保持结构化。 |
+| **以任务为中心的工作流** | 把探索笔记(discovery)、任务简报(spec)和状态都放在 `.octospec/tasks/` 里,让 AI 的工作保持结构化。 |
 | **项目记忆** | `.octospec/journal/` 中的日志保留了上一次发生过什么,这样每个新会话都能带着真实上下文起步。 |
 | **团队共享标准** | 规格存在仓库里,因此某个人来之不易的一条规则能惠及整个团队。 |
 
@@ -178,7 +178,7 @@ agent 都能读取它 —— 同时 octospec 在其之上,作为 OKF 允许的�
     _index.yaml          # 规则清单 + 注入触发条件 + 优先级
   tasks/<slug>/
     discovery.md           # 探索(Discover)阶段笔记:任务将触碰什么
-    brief.md               # 目标 / 承重清单 / 验收 / revision + approvals
+    spec.md               # 目标 / 承重清单 / 验收 / revision + approvals
   journal/<slug>.md        # 单任务记录 + 结构性学习成果
   learnings/pending/<slug>.md   # 仅存放尚需人工设计的未决学习项
   scripts/

@@ -5,6 +5,35 @@ Change history for the global ("constitution") rules, following the
 change-log convention (§7). Newest entries first. Each entry records
 Creation / Update / Deprecation of a knowledge unit.
 
+## 2026-07-10
+
+- **Release** — Cut **`2.1.0`**, bundling this round plus the two prior
+  dogfood iterations that were staged as "unreleased 2.0.0" (autopilot,
+  independent verify, spec-on-branch, log.md removal, slim journal, and TDD in
+  Implement). Bumped `VERSION`, the template `manifest.yaml` pin, the sync-test
+  happy-path fixtures, and the `BOOTSTRAP.md` / README `v2.1.0` tag + raw URLs.
+- **Update** — Renamed the task artifact **`brief.md` → `spec.md`** (and
+  `_brief.template.md` → `_spec.template.md`) — it carries goal / load-bearing /
+  scope / acceptance / approvals / iteration-log, i.e. a spec, not a summary.
+  Updated every reference across skill, router command, templates, octo-code
+  adapter, global rules, docs, and PR templates. Backward-compat: readers fall
+  back to a legacy `brief.md` for one release cycle when `spec.md` is absent;
+  writes are always `spec.md`.
+- **Update** — Added an explicit **slice classification** (`class:` in the spec):
+  `behavior-change` (standard Red→Green), `pure-relocation` (`N/A(test)`;
+  criterion = byte-equivalent diff + suite green), `characterization`
+  (`N/A(test-first)`; criterion = discriminating assertions). Named the
+  **characterization-first** two-stage pattern (net PR then extract PR) so it is
+  not reinvented per slice.
+- **Update** — Added a mandatory **Red self-check** to Implement (assertion-not-
+  crash with `.first`+guard; test actually reaches the code under test;
+  discriminating identity/no-op fixtures; verify real signatures before
+  referencing) — moving these failure modes forward from Verify to Red.
+- **Update** — **Tiered Verify by slice class** (full independent agent for
+  behavior-change; lightweight byte-diff for pure-relocation; focused review for
+  characterization) and split the **targeted filter** (Red→Green inner loop) from
+  the **full gate** (Finish/Verify) to save a redundant full-suite run.
+
 ## 2026-07-08
 
 - **Update** — TDD in Implement (from continued dogfood feedback), same
@@ -14,8 +43,8 @@ Creation / Update / Deprecation of a knowledge unit.
   Verify a git-provable anchor (tests failed pre-implementation, encode the
   Acceptance, weren't weakened to fake green). Refactor is folded into Implement
   (no new phase). Changes that genuinely can't carry a failing test use an
-  explicit `N/A(test): <reason>` in the brief — no silent skip. Updated the
-  workflow skill, router command, brief template (Acceptance = testable),
+  explicit `N/A(test): <reason>` in the spec — no silent skip. Updated the
+  workflow skill, router command, spec template (Acceptance = testable),
   `comprehension-gate.md` (red-first section), octo-code adapter (Red-Green
   parity + `red:`-before-code checklist item), and docs. Iterate's impl-only path
   becomes **impl/test-only** (a test fix is its own explained commit).
@@ -32,7 +61,7 @@ Creation / Update / Deprecation of a knowledge unit.
     "Independent verify (no self-review)" section to `comprehension-gate.md` and
     bumped its timestamp.
   - **Spec rides the branch** — Discover now creates the task branch and commits
-    discovery/brief/approval onto it, so the PR opened at Finish already contains
+    discovery/spec/approval onto it, so the PR opened at Finish already contains
     the spec (eliminates the manual `cp` into the worktree PR).
   - **Removed the per-task `log.md`** — a structural rebase-conflict magnet whose
     content duplicated `git log` (timeline) and the journal (detail). Dropped its
@@ -46,8 +75,8 @@ Creation / Update / Deprecation of a knowledge unit.
 
 - **Update** — Loop v2: the workflow went from a 4-phase loop
   (Plan→Implement→Verify→Finish) to a **6-phase loop**
-  (Discover→Plan→Implement→Verify→Iterate→Finish) with a **brief approval gate**.
-  Added an "Approval gate" section to `comprehension-gate.md`: each brief
+  (Discover→Plan→Implement→Verify→Iterate→Finish) with a **spec approval gate**.
+  Added an "Approval gate" section to `comprehension-gate.md`: each spec
   `revision` must carry a matching human approval before Implement runs; a
   spec-changing Iterate bumps the revision and invalidates the prior approval
   (impl-only rework does not). Bumped `comprehension-gate` timestamp.
@@ -55,7 +84,7 @@ Creation / Update / Deprecation of a knowledge unit.
   with a single router command `/octospec <phase> <slug>`
   (`discover|plan|implement|verify|iterate|finish` + `approve|next|status`); the
   `octospec-workflow` skill is now the single source of truth for phase steps.
-  Rewrote the starter templates (`_brief.template.md` gains `revision`/`approvals`
+  Rewrote the starter templates (`_spec.template.md` gains `revision`/`approvals`
   /Iteration Log; new `_discovery.template.md`) and dropped the unused injection
   budget / fingerprint / `context.yaml` machinery.
 - **Update** — Made the verify step **language-agnostic**: repos declare their gate
@@ -117,12 +146,12 @@ Creation / Update / Deprecation of a knowledge unit.
 - **Update** — Rewrote the linter to be YAML-aware (`scripts/octospec-lint.py`,
   wrapped by the `.sh`): parses frontmatter as YAML, rejects malformed YAML and
   quoted-empty `type: ""`, normalizes BOM/CRLF, fails closed on a bad/empty scan
-  root, and extends scope to `tasks/**` briefs and `journal/**` entries. Bumped
+  root, and extends scope to `tasks/**` specs and `journal/**` entries. Bumped
   the starter template's `inherits` pin to `octo-spec@1.1.0`.
 - **Update** — Made the slash commands/skill/templates OKF-aware so generated
-  artifacts stay conformant: `_brief.template.md` now carries `type: Task`
+  artifacts stay conformant: `_spec.template.md` now carries `type: Task`
   frontmatter; `/octospec-plan` and `/octospec-finish` (+ the workflow skill)
-  instruct writing OKF frontmatter for task briefs and journals and updating
+  instruct writing OKF frontmatter for task specs and journals and updating
   `log.md`.
 
 ## 2026-06-18

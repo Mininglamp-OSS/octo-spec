@@ -319,11 +319,11 @@ EOF
   fi
 
   REL_DRAFT=".octospec/learnings/pending/${SLUG}-rule-draft.md"
-  REL_BRIEF=".octospec/tasks/${SLUG}/brief.md"
+  REL_SPEC=".octospec/tasks/${SLUG}/spec.md"
   cat <<EOF
 ## Rule reflow: $TITLE
 
-**Linked task:** \`$REL_BRIEF\` (slug: \`$SLUG\`)
+**Linked task:** \`$REL_SPEC\` (slug: \`$SLUG\`)
 **Proposed rule:** id \`$RULE_ID\`, tier \`$TIER\`, priority \`$PRIORITY\`, load_bearing \`$LOAD_BEARING\`
 **Draft (scratch material for this PR):** \`$REL_DRAFT\`
 

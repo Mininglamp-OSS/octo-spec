@@ -73,7 +73,7 @@ come with it — reviewable, versioned, and improvable like any other code artif
 
 **Fastest path (zero shell): paste this one line to your coding agent** (Claude Code / Codex / OpenClaw):
 
-> Read https://raw.githubusercontent.com/Mininglamp-OSS/octo-spec/v2.0.0/BOOTSTRAP.md and follow it to onboard octo-spec into this repo.
+> Read https://raw.githubusercontent.com/Mininglamp-OSS/octo-spec/v2.1.0/BOOTSTRAP.md and follow it to onboard octo-spec into this repo.
 
 It clones the pinned octo-spec, then runs the standard `octospec-init` onboarding for you. The manual steps below remain the source of truth.
 
@@ -121,7 +121,7 @@ command workflow.
 | Capability | What it changes |
 |---|---|
 | **Auto-injected rules** | Write conventions once in `.octospec/rules/`, then let the relevant context be injected into each AI session instead of repeating yourself. |
-| **Task-centered workflow** | Keep discovery notes, briefs, and status in `.octospec/tasks/` so AI work stays structured. |
+| **Task-centered workflow** | Keep discovery notes, specs, and status in `.octospec/tasks/` so AI work stays structured. |
 | **Project memory** | Journals in `.octospec/journal/` preserve what happened last time, so each new session starts with real context. |
 | **Team-shared standards** | Specs live in the repo, so one person's hard-won rule benefits the whole team. |
 
@@ -141,7 +141,7 @@ flowchart LR
 
 ```
 Discover  → read-only: understand the code the task touches (writes discovery.md)
-Plan      → derive a brief from discovery; a human APPROVES its revision
+Plan      → derive a spec from discovery; a human APPROVES its revision
 Implement → gate-checks approval, then writes code with matching rules injected
 Verify    → diff checked against rules + the repo's verify.gate, self-fixing
 Iterate   → (optional) rework; spec-changing rework re-triggers approval
@@ -191,7 +191,7 @@ and review gates) on top as permitted OKF extension fields.
     _index.yaml          # rule list + inject triggers + priority
   tasks/<slug>/
     discovery.md           # Discover-phase notes: what the task touches
-    brief.md               # goal / load-bearing list / acceptance / revision + approvals
+    spec.md               # goal / load-bearing list / acceptance / revision + approvals
   journal/<slug>.md        # per-task record + structural learnings
   learnings/pending/<slug>.md   # ONLY unresolved learnings needing human design
   scripts/
@@ -210,7 +210,7 @@ and review gates) on top as permitted OKF extension fields.
 ## OKF conformance
 
 The knowledge files (the global rule files, any repo `rules/*.md`, and per-task
-`tasks/**` briefs / `journal/**` entries) are valid OKF units: each starts with a
+`tasks/**` specs / `journal/**` entries) are valid OKF units: each starts with a
 properly terminated YAML frontmatter block that parses as valid YAML and declares
 a non-empty `type`. The structural files `index.md` and `log.md` are intentionally
 exempt (OKF index/log are plain markdown with no frontmatter), as are fill-in

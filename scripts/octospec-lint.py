@@ -7,7 +7,7 @@ a non-empty scalar `type` (OKF's only required field). This keeps the repository
 a valid OKF bundle so any OKF-aware tool or agent can consume it.
 
 Scope is opt-in: only directories that hold knowledge units are linted
-(global rules, any */rules/ tree, and per-task briefs / journals). Prose, docs,
+(global rules, any */rules/ tree, and per-task specs / journals). Prose, docs,
 fill-in templates, and OKF index/log structural files are not knowledge units and
 are never linted.
 

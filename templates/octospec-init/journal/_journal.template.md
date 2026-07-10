@@ -11,13 +11,13 @@ slug: <slug>
 # Journal: <slug>
 
 > The **Finish** phase output. Keep it thin: a one-line result plus the Learning.
-> Do NOT restate the Goal or repeat the PR description — cross-reference the brief
-> (`.octospec/tasks/<slug>/brief.md`) and the PR instead. The `## Learning`
+> Do NOT restate the Goal or repeat the PR description — cross-reference the spec
+> (`.octospec/tasks/<slug>/spec.md`) and the PR instead. The `## Learning`
 > section is this file's only unique value: it is the raw material a reusable rule
 > is promoted from. There is no per-task change log — git history carries the
 > timeline.
 
-**Result:** <one line — what shipped, linking the brief + PR.>
+**Result:** <one line — what shipped, linking the spec + PR.>
 
 ## Learning
 <!-- What would you tell the next person touching this area? A gotcha, a contract

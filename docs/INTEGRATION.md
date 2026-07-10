@@ -26,7 +26,7 @@ always find the block, while other files (`GEMINI.md`, `QWEN.md`, …) are synce
 only when they already exist. It uses
 `<!-- octospec:begin -->` / `<!-- octospec:end -->` markers. The wording is
 tool-neutral, so whichever file an agent reads, it gets the same guidance:
-read the matching `.octospec/rules/`, capture a task brief, fill the PR's
+read the matching `.octospec/rules/`, capture a task spec, fill the PR's
 comprehension questions.
 
 This layer makes agents **do the right thing by default**. It is guidance, not a
@@ -56,7 +56,7 @@ can't merge without passing Layer 2.
 |---|---|---|---|---|
 | **1. Local Claude Code** | Claude Code in the checkout | `CLAUDE.md` + `.octospec/` | ✅ auto | Plus the `/octospec <phase>` command (incl. `autopilot`) |
 | **2b. Orchestrator → local Claude Code / Codex** | CC / Codex spawned in the checkout | `CLAUDE.md` / `AGENTS.md` | ✅ auto | As long as the spawn cwd is the repo root |
-| **2c. Orchestrator → dispatch system** | Agent runs CC/Codex in a checkout | `CLAUDE.md` / `AGENTS.md` + brief | ✅ auto | Dispatch brief adds a "read `.octospec`" pointer; dogfooded on `octo-server` (issue #344 → PR #420) |
+| **2c. Orchestrator → dispatch system** | Agent runs CC/Codex in a checkout | `CLAUDE.md` / `AGENTS.md` + spec | ✅ auto | Dispatch spec adds a "read `.octospec`" pointer; dogfooded on `octo-server` (issue #344 → PR #420) |
 | **2a. Orchestrator writes code directly** | The orchestrator itself (not checkout-anchored) | — | ⚠️ **not auto** | See decision below |
 
 ### Decision: scenario 2a is closed, not patched
@@ -80,7 +80,7 @@ directly, Layer 2 (the PR gate) still catches load-bearing work.
 
 1. If it's a new agent tool with its own instruction file (e.g. `GEMINI.md`),
    add that filename to `octospec-sync` so the shared block is synced there too.
-2. If it's a new way to dispatch work, make sure its task brief includes the
+2. If it's a new way to dispatch work, make sure its task spec includes the
    "read `.octospec/`" pointer.
 3. You never need to weaken Layer 2 — it's the safety net for every path.
 

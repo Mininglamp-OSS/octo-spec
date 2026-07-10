@@ -26,7 +26,7 @@ changed, why, and how it was verified** without reading external context.
 The PR template enforces these. A PR missing them should be blocked.
 
 - **Summary** — what this PR does, in plain language.
-- **Linked Spec** — link to the task brief (`.octospec/tasks/<slug>/brief.md`)
+- **Linked Spec** — link to the task spec (`.octospec/tasks/<slug>/spec.md`)
   or the issue this implements, when the change touches load-bearing behavior.
 - **How verified** — tests run, manual steps, or evidence.
 - **COMPREHENSION** (load-bearing / architectural / P0 changes only) — answer the
@@ -35,7 +35,7 @@ The PR template enforces these. A PR missing them should be blocked.
 ## Rules
 
 - Keep PRs small and single-purpose. Split unrelated changes.
-- A PR that touches load-bearing behavior without a linked spec/brief should be
+- A PR that touches load-bearing behavior without a linked spec should be
   sent back for changes.
 - Do not force-push or rebase another author's PR branch; ownership stays with
   the original author.

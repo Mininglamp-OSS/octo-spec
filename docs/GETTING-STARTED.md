@@ -60,7 +60,7 @@ flowchart LR
     F -.learnings.-> D
 
     D -.branch + writes.-> DS["discovery.md (committed)"]
-    P -.writes.-> B["brief.md (revision)"]
+    P -.writes.-> B["spec.md (revision)"]
     I -.Red→Green→Refactor.-> CODE["red tests → code"]
     V -.independent reviewer + red trail + verify.gate.-> FIX["reviewer findings"]
     F -.->PR["PR + slim journal + learnings"]
@@ -69,8 +69,8 @@ flowchart LR
 | Phase | Command | What happens |
 |---|---|---|
 | **Discover** | `/octospec discover <task>` | Create the task branch; read-only exploration of the code the task touches → `discovery.md` (committed). Grounds the load-bearing list. |
-| **Plan** | `/octospec plan <slug>` | Derive the brief (Goal / load-bearing list / out-of-scope / acceptance) from discovery; commit it. Acceptance is written to become failing tests. Stops for approval. |
-| **Approve** | `/octospec approve <slug>` | A human signs off the brief's current revision (recorded + committed). Implement is blocked until this exists. |
+| **Plan** | `/octospec plan <slug>` | Derive the spec (Goal / load-bearing list / out-of-scope / acceptance) from discovery; commit it. Acceptance is written to become failing tests. Stops for approval. |
+| **Approve** | `/octospec approve <slug>` | A human signs off the spec's current revision (recorded + committed). Implement is blocked until this exists. |
 | **Implement** | `/octospec implement <slug>` | Gate-checks approval, injects matching rules, then **TDD**: commit failing Acceptance tests (`red:`) before code, write minimal code to green, refactor. |
 | **Verify** | `/octospec verify <slug>` | An **independent reviewer** (fresh context) checks the diff vs rules + acceptance + out-of-scope, confirms the `red:` trail (tests failed first, encode Acceptance, not weakened); runs `manifest.verify.gate`. No self-review. |
 | **Iterate** | `/octospec iterate <slug>` | Optional rework: impl/test-only → re-Verify (test fix is its own commit); spec-changing → bump revision + re-approve. |
@@ -87,7 +87,7 @@ flowchart LR
 You:  /octospec discover add a per-room mute toggle to the group settings API
 AI:   (reads code) → writes .octospec/tasks/group-mute-toggle/discovery.md
 You:  /octospec plan group-mute-toggle
-AI:   → writes brief.md (r1): Goal / load-bearing ["space","error-response"] / ...
+AI:   → writes spec.md (r1): Goal / load-bearing ["space","error-response"] / ...
 You:  /octospec approve group-mute-toggle
 AI:   records approval for revision 1
 You:  /octospec implement group-mute-toggle
@@ -100,7 +100,7 @@ You:  /octospec finish group-mute-toggle
 AI:   opens PR, body pre-filled with Linked Spec (r1, approved) + COMPREHENSION
 ```
 
-Once the brief is approved, the middle phases are mechanical — collapse them with
+Once the spec is approved, the middle phases are mechanical — collapse them with
 autopilot:
 
 ```

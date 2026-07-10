@@ -21,7 +21,7 @@ tmp="$(mktemp -d)"; TMP_DIRS+=("$tmp")
 cd "$tmp"
 git init -q
 mkdir -p .octospec
-printf 'inherits: octo-spec@2.0.0\n' > .octospec/manifest.yaml
+printf 'inherits: octo-spec@2.1.0\n' > .octospec/manifest.yaml
 printf '# CLAUDE\n\nteam rule\n' > CLAUDE.md
 # orphan begin marker -> the python helper must REFUSE this file
 printf '# AGENTS\n\n<!-- octospec:begin -->\nrule beta KEEP ME\n' > AGENTS.md
@@ -65,7 +65,7 @@ tmp2="$(mktemp -d)"; TMP_DIRS+=("$tmp2")
 cd "$tmp2"
 git init -q
 mkdir -p .octospec
-printf 'inherits: octo-spec@2.0.0\n' > .octospec/manifest.yaml
+printf 'inherits: octo-spec@2.1.0\n' > .octospec/manifest.yaml
 printf '# CLAUDE\n\nteam rule keep me\n' > CLAUDE.md
 # Intentionally NO AGENTS.md / GEMINI.md / QWEN.md.
 
@@ -178,14 +178,14 @@ fi
 # Version assertion (YUJ-5344): the manifest pin (inherits: octo-spec@X) must
 # match the GLOBAL_SRC checkout's VERSION, asserted BEFORE any vendoring so a
 # stale pin never silently ships the wrong global rules. GLOBAL_SRC=$REPO has
-# VERSION=2.0.0, so the fixtures pin 2.0.0 on the happy path.
+# VERSION=2.1.0, so the fixtures pin 2.1.0 on the happy path.
 
 # [api] 1) pin == VERSION -> exit 0, block synced, and re-running is idempotent.
 tmp4="$(mktemp -d)"; TMP_DIRS+=("$tmp4")
 cd "$tmp4"
 git init -q
 mkdir -p .octospec
-printf 'inherits: octo-spec@2.0.0\n' > .octospec/manifest.yaml
+printf 'inherits: octo-spec@2.1.0\n' > .octospec/manifest.yaml
 printf '# CLAUDE\n\nteam rule\n' > CLAUDE.md
 
 set +e
@@ -194,7 +194,7 @@ code4=$?
 set -e
 
 if [ "$code4" -eq 0 ]; then
-  note ok "version-match sync exits 0 (pin 2.0.0 == VERSION 2.0.0)"
+  note ok "version-match sync exits 0 (pin 2.1.0 == VERSION 2.1.0)"
 else
   note FAIL "version-match sync exited $code4"; fail=1
   cat out.log
@@ -294,7 +294,7 @@ mkdir -p "$nover/global"
 cd "$tmp7"
 git init -q
 mkdir -p .octospec
-printf 'inherits: octo-spec@2.0.0\n' > .octospec/manifest.yaml
+printf 'inherits: octo-spec@2.1.0\n' > .octospec/manifest.yaml
 printf '# CLAUDE\n\nteam rule\n' > CLAUDE.md
 
 set +e

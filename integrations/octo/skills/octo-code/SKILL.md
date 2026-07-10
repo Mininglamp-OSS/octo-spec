@@ -1,6 +1,6 @@
 ---
 name: octo-code
-description: Run the octo-spec engineering flow from an octo chat message. A team member sends a plain-language coding request ("add X to repo Y" / "fix bug Z"); the bot onboards the repo to octo-spec if needed, runs Claude Code in headless mode through the 6-phase loop (Discover/Plan/Implement/Verify/Iterate/Finish incl. learning reflow), pausing after Plan for human approval of the brief, opens a PR, and reports back in the thread. Use for octo coding requests that should produce a real PR without the user opening Claude Code. ACP-free, no multica dependency.
+description: Run the octo-spec engineering flow from an octo chat message. A team member sends a plain-language coding request ("add X to repo Y" / "fix bug Z"); the bot onboards the repo to octo-spec if needed, runs Claude Code in headless mode through the 6-phase loop (Discover/Plan/Implement/Verify/Iterate/Finish incl. learning reflow), pausing after Plan for human approval of the spec, opens a PR, and reports back in the thread. Use for octo coding requests that should produce a real PR without the user opening Claude Code. ACP-free, no multica dependency.
 user-invocable: false
 ---
 
@@ -70,10 +70,10 @@ questions, discussions, or product decisions.
    - read `CLAUDE.md` and follow the octo-spec standard;
    - run the full 6-phase loop: Discover (create the task branch, write + commit
      `.octospec/tasks/<slug>/discovery.md`) → Plan (write + commit
-     `.octospec/tasks/<slug>/brief.md`, revision 1) → **STOP for the approval
+     `.octospec/tasks/<slug>/spec.md`, revision 1) → **STOP for the approval
      gate** → Implement **TDD-style: commit failing Acceptance tests
      (`red: <slug>`) before production code, then green, then refactor** →
-     **Verify as an independent pass** (a fresh-session review vs the brief's
+     **Verify as an independent pass** (a fresh-session review vs the spec's
      Acceptance + the `red:`-before-code trail, plus `manifest.verify.gate` green
      — not the implementing session self-certifying) → Iterate if needed →
      **Finish incl. learning reflow** (slim journal entry — one-line result +
@@ -86,7 +86,7 @@ questions, discussions, or product decisions.
 
 4. **Run the engine — in two halves around the approval pause**
    (`shared/octo-code-core.md` §B, §B2). First `claude -p` runs Discover + Plan
-   and stops after the brief; post the brief to the thread and wait for the
+   and stops after the spec; post the spec to the thread and wait for the
    originator's `approve`. On approval, write the approval record and `--resume`
    to continue from Implement. Use `--output-format json`, `--allowedTools`
    **derived from `manifest.verify.tools`** (not hardcoded), `--permission-mode
@@ -94,7 +94,7 @@ questions, discussions, or product decisions.
 
 5. **Completion check + resume** (`shared/octo-code-core.md` §C). Parse the JSON
    (`session_id`, `terminal_reason`, `total_cost_usd`), then verify the artifact
-   checklist (brief revision approved, **Verify ran independently**, **TDD trail
+   checklist (spec revision approved, **Verify ran independently**, **TDD trail
    intact — `red:` commit precedes the code**, branch pushed, `verify.gate` green,
    rule+index landed if applicable, slim journal written, OKF lint OK, **PR
    opened**). If anything is missing, `--resume <session_id>` with a focused prompt
@@ -151,9 +151,9 @@ No commands to memorize — plain language in the octo thread:
 > *"use octo-code to add a rate-limit middleware to octo-server"*
 > *"octo-code: fix the null-pointer in octo-web's login flow"*
 
-The bot parses intent + repo, runs the flow above, **posts the brief back for you
+The bot parses intent + repo, runs the flow above, **posts the spec back for you
 to `approve`**, then finishes and replies in-thread with the PR URL, test result,
-and cost. You approve the brief up front and review/approve the PR at the end.
+and cost. You approve the spec up front and review/approve the PR at the end.
 
 ## Validation
 

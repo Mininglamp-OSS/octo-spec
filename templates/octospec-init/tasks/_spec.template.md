@@ -19,8 +19,8 @@ approvals: []
 
 # Task: <slug>
 
-> One task = one `.octospec/tasks/<slug>/` directory. This brief is the spec for
-> the work, derived from `discovery.md`. AI drafts it; a human **approves** it
+> One task = one `.octospec/tasks/<slug>/` directory. This `spec.md` is the spec
+> for the work, derived from `discovery.md`. AI drafts it; a human **approves** it
 > (via `/octospec approve <slug>`) before Implement may start.
 
 ## Goal
@@ -39,14 +39,26 @@ approvals: []
 <!-- What this change deliberately does NOT touch. -->
 - 
 
+## Slice class
+<!-- Exactly one (see the octospec-workflow "Slice classification"):
+     - behavior-change   — changes observable behavior; Acceptance = failing tests.
+     - pure-relocation   — moves code, behavior unchanged; Verify = byte-equivalent
+                           diff + suite stays green.
+     - characterization  — pins CURRENT behavior so a later slice can refactor;
+                           Verify = discriminating assertions.
+     If a task spans two classes, split it. -->
+class: <behavior-change | pure-relocation | characterization>
+
 ## Acceptance
-<!-- Each item should be expressible as a FAILING test that Implement writes
-     first (TDD Red) and commits before production code. State them so they are
-     machine-checkable: the input, the expected observable behavior, the assertion.
-     An item that genuinely cannot have an automated failing test (pure refactor,
-     UI/visual, config/dependency bump) must be marked `N/A(test): <reason>` —
-     that honest exemption is what the independent Verify checks; silently
-     skipping the test is not allowed. -->
+<!-- Depends on the slice class:
+     - behavior-change: each item is a FAILING test that Implement writes first
+       (TDD Red) and commits before production code. State it machine-checkably:
+       input, expected observable behavior, the assertion.
+     - pure-relocation: mark `N/A(test): relocation` — criterion is a
+       byte-equivalent behavior diff + the existing suite staying green.
+     - characterization: mark `N/A(test-first): characterization` — criterion is
+       discriminating assertions that would catch the next slice's regression.
+     Silently skipping a test on a behavior-change item is not allowed. -->
 - 
 
 ## Iteration Log

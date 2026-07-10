@@ -99,17 +99,17 @@ Notes:
   6-phase loop (Discover → Plan → Implement → Verify → Iterate → Finish),
   **pausing after Plan for the approval gate** (§B2) and including the
   Finish-phase learning reflow. Discover creates the task branch and commits the
-  spec (discovery + brief) onto it — here the per-task **worktree branch from
+  spec (discovery + spec) onto it — here the per-task **worktree branch from
   §A.4 IS that branch**, so the spec rides into the PR with no manual copy.
 - **Verify must be independent.** The session that wrote the code must not
   self-certify. Run Verify as a **separate `claude -p` review** (fresh session,
-  read-only tools) that checks the diff against the brief's Acceptance + injected
+  read-only tools) that checks the diff against the spec's Acceptance + injected
   rules + Out of scope, in addition to the repo `verify.gate`. See §C.
 - **Implement is TDD (Red → Green → Refactor).** The task prompt must instruct the
   agent to write the approved Acceptance as failing tests and **commit them
   (`red: <slug>`) before any production code**, then write the minimal code to
   green, then refactor while staying green. Acceptance items marked `N/A(test)` in
-  the brief get no test. The `red:`-before-code commit order is what the §C
+  the spec get no test. The `red:`-before-code commit order is what the §C
   checklist verifies — an unattended run that writes tests *after* the code has
   not done TDD.
 
@@ -117,30 +117,30 @@ Notes:
 
 ## B2. Approval pause (between Plan and Implement)
 
-The brief must be **human-approved** before Implement. In an unattended run there
+The spec must be **human-approved** before Implement. In an unattended run there
 is no human at the keyboard, so the flow is **not** one continuous engine call —
 it splits around a real pause:
 
 1. **Plan half.** The engine runs Discover + Plan and STOPS after writing
-   `.octospec/tasks/<slug>/brief.md` (revision 1). Instruct it in the task prompt
-   to end the turn there without implementing. Post the brief back to the
-   originating thread: *"Brief ready (r1). Reply `approve` to continue, or reply
+   `.octospec/tasks/<slug>/spec.md` (revision 1). Instruct it in the task prompt
+   to end the turn there without implementing. Post the spec back to the
+   originating thread: *"Spec ready (r1). Reply `approve` to continue, or reply
    with changes."*
 2. **Human decision.** Wait for the originator's reply. Do not auto-approve — the
-   agent may not approve its own brief (comprehension gate, no self-approval).
+   agent may not approve its own spec (comprehension gate, no self-approval).
 3. **Approve + resume.** On `approve`, the orchestrator writes the approval record
-   into the brief's `approvals:` frontmatter (`revision:` = current, `by:` = the
+   into the spec's `approvals:` frontmatter (`revision:` = current, `by:` = the
    originator's identity, `at:` = ISO8601 UTC) **and commits it**
    (`approve: <slug> r<rev>`) on the task branch — parity with local `/octospec
    approve`, so the sign-off is in git history. Then `--resume "$sid"` with a
    prompt to continue from Implement. On a change request, resume the Plan half
-   instead and re-post the updated brief.
-4. **Re-pause on revision bump.** If a later Iterate is *spec-changing*, the brief
+   instead and re-post the updated spec.
+4. **Re-pause on revision bump.** If a later Iterate is *spec-changing*, the spec
    `revision` bumps and the prior approval is stale. Pause again and get the new
    revision approved before Implement resumes. Impl-only iterations do not bump
    the revision and need no re-approval.
 
-> This means octo-code is **not** "one message → PR" — it is "one message → brief
+> This means octo-code is **not** "one message → PR" — it is "one message → spec
 > → human approve → PR". That pause is the point: sign-off happens at the spec
 > boundary, not after the code already exists.
 
@@ -159,16 +159,19 @@ verify against artifacts, then resume the same session if work remains.
    ```
 2. **Artifact checklist** (the real definition of done — verify all that the task
    required):
-   - the brief's current `revision` is approved (`approvals[]` has a matching
-     entry) — an unapproved brief means Implement should never have run;
+   - the spec's current `revision` is approved (`approvals[]` has a matching
+     entry) — an unapproved spec means Implement should never have run;
    - **Verify ran as an independent pass** — a review from a fresh session
-     (not the implementing session) checked the diff against the brief's
+     (not the implementing session) checked the diff against the spec's
      Acceptance; a "done" from the same session that wrote the code is not
      sufficient;
-   - **the TDD trail is intact** — a `red:` commit precedes the production code,
-     its tests failed on the pre-implementation tree and encode the approved
-     Acceptance, and the green diff did not weaken them (git log order is the
-     check); non-`N/A(test)` Acceptance items each have a test;
+   - **the TDD trail matches the slice class** (the spec's `class:`): for a
+     **behavior-change**, a `red:` commit precedes the production code, its tests
+     failed on the pre-implementation tree and encode the approved Acceptance, and
+     the green diff did not weaken them (git log order is the check), with a test
+     per non-`N/A` item; for a **pure-relocation**, the behavior diff is
+     byte-equivalent and the suite stays green; for a **characterization**, the
+     net's assertions are discriminating;
    - expected branch exists and is pushed;
    - the repo gate is green: run the commands in `manifest.yaml` `verify.gate`
      (fall back to the repo's documented gate if no `verify:` block);
