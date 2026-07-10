@@ -254,12 +254,12 @@ Only when Verify failed or surfaced a gap. Decide the kind of rework:
 - Promote any reusable learning **in this same PR**: edit the relevant
   `.octospec/rules/<rule>.md` in place (or add a new rule + `_index.yaml` entry) —
   the PR review is the gate. The helper `.octospec/scripts/octospec-update-spec.sh`
-  gives you the raw material: `--kind=rule` → a draft in
-  `learnings/pending/<slug>-rule-draft.md` + a promotion block on stdout. It never
-  auto-writes `rules/`, so **you** copy the draft into `rules/<id>.md` and update
-  `_index.yaml` here, in this PR, then drop the scratch draft. Only use
-  `.octospec/learnings/pending/` for *unresolved* learnings that still need human
-  design before becoming a rule; finished learnings must not be stranded there.
+  gives you the raw material: `--kind=rule` → a draft at
+  `.octospec/tasks/<slug>/<slug>-rule-draft.md` + a promotion block on stdout. It
+  never auto-writes `rules/`, so **you** copy the draft into `rules/<id>.md` and
+  update `_index.yaml` here, in this PR, then **delete the scratch draft**. If a
+  learning surfaced but isn't ready to be a rule, keep it in the task journal's
+  `## Learning` section — do not leave a rule draft behind.
 - Open a PR. Because the branch already carries discovery + spec + approval, the
   PR contains the spec automatically. Fill the PR template's **Linked Spec** (→
   the spec, noting the approved revision) and the **COMPREHENSION** three

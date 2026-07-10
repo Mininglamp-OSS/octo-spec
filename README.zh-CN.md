@@ -138,7 +138,7 @@ Implement → 先校验 approval 门,再按 TDD(Red→Green→Refactor)在相关
 Verify    → 由**独立评审**(fresh context)对照 spec + 本仓库的 verify.gate 校验 diff
 Iterate   → (可选)返工;改动 spec 的返工会重新触发 approval
 Finish    → 运行一次最终检查,然后把新的学习成果于同一 PR 内提炼回 rules/
-            (无死信;pending/ 只留未决项)
+            (无死信队列;够格成 rule 就进 rules/,否则留 journal)
 ```
 
 > **这个 loop 由你的编码 agent 执行,不是一组可粘贴的 CLI 命令。** 由 `/octospec`
@@ -179,8 +179,8 @@ agent 都能读取它 —— 同时 octospec 在其之上,作为 OKF 允许的�
   tasks/<slug>/
     discovery.md           # 探索(Discover)阶段笔记:任务将触碰什么
     spec.md               # 目标 / 承重清单 / 验收 / revision + approvals
+    <slug>-rule-draft.md  # (临时)助手生成的 rule 草稿,落地后删除
   journal/<slug>.md        # 单任务记录 + 结构性学习成果
-  learnings/pending/<slug>.md   # 仅存放尚需人工设计的未决学习项
   scripts/
     octospec-update-spec.sh     # 收尾阶段助手:生成 rule 草稿 + 供同一 PR 内落地的
                                 # promotion 材料
@@ -188,9 +188,10 @@ agent 都能读取它 —— 同时 octospec 在其之上,作为 OKF 允许的�
 
 > 可复用的学习成果在收尾(Finish)阶段**于同一个 PR 内**就地回流(直接编辑相关的
 > `rules/<rule>.md`,或新增一条 rule + `_index.yaml` 条目)——PR 评审即闸门。
-> `learnings/pending/` 仅保留**尚未决、需要人工设计**才能成为规则的学习项;已完成的
-> 学习成果绝不会滞留等待另一个 PR。`.octospec/scripts/octospec-update-spec.sh`
-> 助手负责生成这些草稿素材,绝不直接写入 main 的 `rules/`。
+> 助手把 rule 草稿写在 `tasks/<slug>/<slug>-rule-draft.md`(临时,落地后删除);尚不
+> 适合成为规则的学习成果就留在任务 journal 的 `## Learning` 里,没有独立的死信队列。
+> `.octospec/scripts/octospec-update-spec.sh` 助手负责生成这些草稿素材,绝不直接写入
+> main 的 `rules/`。
 
 ## OKF 一致性(conformance)
 

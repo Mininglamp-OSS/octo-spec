@@ -146,7 +146,7 @@ Implement → gate-checks approval, then TDD (Red→Green→Refactor) with rules
 Verify    → an INDEPENDENT reviewer checks the diff vs the spec + the repo's verify.gate
 Iterate   → (optional) rework; spec-changing rework re-triggers approval
 Finish    → a final check runs, then new learnings are promoted back into rules/
-            in the same PR (no dead-letter; pending/ holds only unresolved ones)
+            in the same PR (no dead-letter queue; rule-ready → rules/, else journal)
 ```
 
 > **The loop is executed by your coding agent — it is not a set of pasteable CLI
@@ -192,8 +192,8 @@ and review gates) on top as permitted OKF extension fields.
   tasks/<slug>/
     discovery.md           # Discover-phase notes: what the task touches
     spec.md               # goal / load-bearing list / acceptance / revision + approvals
+    <slug>-rule-draft.md  # (transient) rule draft the helper writes, deleted once landed
   journal/<slug>.md        # per-task record + structural learnings
-  learnings/pending/<slug>.md   # ONLY unresolved learnings needing human design
   scripts/
     octospec-update-spec.sh     # Finish-phase helper: drafts a rule + promotion
                                 # material for landing it in the same PR
@@ -201,9 +201,10 @@ and review gates) on top as permitted OKF extension fields.
 
 > Reusable learnings are promoted **in the same PR** at Finish (edit the relevant
 > `rules/<rule>.md` in place, or add a new rule + `_index.yaml` entry) — the PR
-> review is the gate. `learnings/pending/` is reserved only for *unresolved*
-> learnings that still need human design before becoming a rule; finished
-> learnings are never stranded waiting on a separate PR. The
+> review is the gate. The helper drafts the rule at
+> `tasks/<slug>/<slug>-rule-draft.md` (scratch, deleted once the rule lands); a
+> learning that isn't rule-ready stays in the task journal's `## Learning`, never
+> a separate dead-letter queue. The
 > `.octospec/scripts/octospec-update-spec.sh` helper drafts these artifacts
 > without ever writing `rules/` on main directly.
 

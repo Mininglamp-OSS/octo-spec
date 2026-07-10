@@ -12,9 +12,9 @@
 #   --kind=rule  (規範級 / rule-level)
 #     A learning that should constrain EVERY future task. The script:
 #       1. writes a DRAFT OKF Rule (full frontmatter + octospec extension fields)
-#          to  .octospec/learnings/pending/<slug>-rule-draft.md
-#          — pending/ here is scratch material for THIS PR, not a dead-letter to
-#            be promoted in some future PR;
+#          to  .octospec/tasks/<slug>/<slug>-rule-draft.md
+#          — scratch material for THIS PR (lives beside the task's spec/discovery,
+#            deleted once the rule lands), not a dead-letter to promote later;
 #       2. prints promotion material to stdout (proposed rule body + COMPREHENSION
 #          three questions + a checklist) so the AUTHOR can, in this same PR,
 #          land the rule into .octospec/rules/<id>.md and add the
@@ -76,7 +76,6 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # is invoked against a target repo's .octospec/, which is NOT the script's own
 # parent once installed). Fall back to scripts/.. only when unset.
 OCTOSPEC_DIR="${OCTOSPEC_DIR:-$(cd "$HERE/.." && pwd)}"   # scripts/ -> .octospec/
-PENDING_DIR="$OCTOSPEC_DIR/learnings/pending"
 
 # --- defaults -----------------------------------------------------------------
 SLUG=""
@@ -255,7 +254,14 @@ if [ "$KIND" = "rule" ]; then
     PATHS_SEQ='["**"]'
   fi
 
-  DRAFT_PATH="$PENDING_DIR/${SLUG}-rule-draft.md"
+  # The rule draft is scratch material for THIS PR: it lives alongside the task's
+  # spec/discovery under tasks/<slug>/, so it rides the task branch, is visible in
+  # review, and is deleted once the author lands the rule into rules/. (There is no
+  # separate learnings/pending/ dead-letter — a finished rule goes to rules/, an
+  # unfinished idea goes in the task journal's ## Learning.)
+  DRAFT_DIR="$OCTOSPEC_DIR/tasks/$SLUG"
+  DRAFT_PATH="$DRAFT_DIR/${SLUG}-rule-draft.md"
+  mkdir -p "$DRAFT_DIR"
 
   if [ -e "$DRAFT_PATH" ] && [ "$SKIP_EXISTING" -eq 1 ]; then
     echo "$PROG: draft exists, --skip-existing set; leaving $DRAFT_PATH untouched" >&2
@@ -312,7 +318,7 @@ EOF
     exit 0
   fi
 
-  REL_DRAFT=".octospec/learnings/pending/${SLUG}-rule-draft.md"
+  REL_DRAFT=".octospec/tasks/${SLUG}/${SLUG}-rule-draft.md"
   REL_SPEC=".octospec/tasks/${SLUG}/spec.md"
   cat <<EOF
 ## Rule reflow: $TITLE

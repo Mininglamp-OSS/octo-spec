@@ -16,8 +16,10 @@ SCRIPT="$HERE/octospec-update-spec.sh"
 # exported OCTOSPEC_DIR; the fixture's parent acts as the repo root.
 FIXTURE_ROOT="$(mktemp -d)"
 export OCTOSPEC_DIR="$FIXTURE_ROOT/.octospec"
-mkdir -p "$OCTOSPEC_DIR/learnings/pending" "$OCTOSPEC_DIR/journal" "$OCTOSPEC_DIR/rules"
-PENDING="$OCTOSPEC_DIR/learnings/pending"
+mkdir -p "$OCTOSPEC_DIR/tasks" "$OCTOSPEC_DIR/journal" "$OCTOSPEC_DIR/rules"
+TASKS="$OCTOSPEC_DIR/tasks"
+# The rule draft lives beside the task's spec under tasks/<slug>/.
+draft_path() { printf '%s/%s/%s-rule-draft.md' "$TASKS" "$1" "$1"; }
 
 pass=0
 fail=0
@@ -41,7 +43,7 @@ refuses()  { ! "$SCRIPT" "$@" >/dev/null 2>&1; }
 refuses_stdin() { ! "$SCRIPT" "$@" </dev/null >/dev/null 2>&1; }
 
 cleanup() {
-  rm -f "$PENDING"/selftest-*-rule-draft.md
+  rm -rf "$TASKS"/selftest-* "$TASKS"/ok-slug 2>/dev/null || true
 }
 # Single EXIT trap: scrub the test artifacts AND drop the throwaway fixture root,
 # so repeated local runs never leak temp dirs.
@@ -53,7 +55,7 @@ echo "== 1. --kind=rule (draft + promotion material) =="
 BODY="$("$SCRIPT" --slug selftest-rule --kind rule --load-bearing \
   --inject-touches "space,audit" --priority 88 \
   --learning $'Cross-Space writes must record an audit entry.\nUse audit.Record before returning.')"
-DRAFT="$PENDING/selftest-rule-rule-draft.md"
+DRAFT="$(draft_path selftest-rule)"
 check "draft file created" test -f "$DRAFT"
 check "OKF type: Rule" grep -qx 'type: Rule' "$DRAFT"
 for f in title description tags timestamp id tier priority load_bearing inject_when source; do
@@ -71,7 +73,7 @@ check "promotion block links draft" contains 'selftest-rule-rule-draft.md' "$BOD
 
 echo "== 2. idempotency (rerun must not duplicate) =="
 "$SCRIPT" --slug selftest-rule --kind rule --learning 'second run overwrites' --no-promote >/dev/null
-n_after="$(find "$PENDING" -maxdepth 1 -name 'selftest-rule-rule-draft.md' | wc -l | tr -d ' ')"
+n_after="$(find "$TASKS/selftest-rule" -maxdepth 1 -name 'selftest-rule-rule-draft.md' | wc -l | tr -d ' ')"
 check "still exactly one draft after rerun" test "$n_after" -eq 1
 check "default overwrites content" grep -q 'second run overwrites' "$DRAFT"
 "$SCRIPT" --slug selftest-rule --kind rule --learning 'THIRD run skipped' --skip-existing --no-promote >/dev/null
@@ -82,7 +84,7 @@ check "task kind refused" refuses --slug selftest-task --kind task --learning x
 # The refusal names the flat-journal replacement so the caller knows where to go.
 TASK_ERR="$("$SCRIPT" --slug selftest-task --kind task --learning x 2>&1 || true)"
 check "task refusal points at flat journal" contains 'journal/<slug>.md' "$TASK_ERR"
-check "task kind wrote NOTHING to learnings/pending" test ! -e "$PENDING/selftest-task-rule-draft.md"
+check "task kind wrote NOTHING (no draft)" test ! -e "$(draft_path selftest-task)"
 check "no by-actor tree materialized" test ! -d "$OCTOSPEC_DIR/journal/by-actor"
 
 echo "== 4. input validation / refusals =="
@@ -98,7 +100,7 @@ check "flag-as-value (--learning --kind) refused" \
 # ...but the --opt=val escape hatch still accepts a value that starts with --.
 check "--opt=--value escape hatch accepted" \
   "$SCRIPT" --slug ok-slug --kind rule --title=--weird --learning x --no-promote
-rm -f "$PENDING/ok-slug-rule-draft.md"
+rm -rf "$TASKS/ok-slug"
 
 echo "== 5. backslash in learning -> valid YAML frontmatter (octospec-lint) =="
 # A learning whose first line carries a regex (\d) and a Windows path (C:\tmp):
@@ -132,12 +134,12 @@ PY
 # rule path: draft frontmatter must be valid YAML despite the backslashes.
 "$SCRIPT" --slug selftest-bs --kind rule --no-promote \
   --title 'Regex \d guard' --learning "$BS_LEARNING" >/dev/null
-BS_DRAFT="$PENDING/selftest-bs-rule-draft.md"
+BS_DRAFT="$(draft_path selftest-bs)"
 check "backslash rule draft created" test -f "$BS_DRAFT"
 check "backslash rule draft is valid YAML frontmatter" yaml_ok "$BS_DRAFT"
 check "backslash preserved in draft body" grep -qF 'C:\tmp\report' "$BS_DRAFT"
 if [ -n "$LINT" ]; then
-  # learnings/pending/ IS in octospec-lint scope; the backslash draft must pass.
+  # tasks/<slug>/ IS in octospec-lint scope; the backslash draft must pass.
   check "octospec-lint passes the backslash draft" \
     python3 "$LINT" "$OCTOSPEC_DIR"
 else
@@ -149,7 +151,7 @@ echo "== 6. literal newline in --title/--description folds to single-line YAML =
 "$SCRIPT" --slug selftest-nl --kind rule --no-promote \
   --title "$(printf 'line one\nline two')" \
   --description "$(printf 'desc a\ndesc b')" --learning 'body' >/dev/null
-NL_DRAFT="$PENDING/selftest-nl-rule-draft.md"
+NL_DRAFT="$(draft_path selftest-nl)"
 check "newline-title draft created" test -f "$NL_DRAFT"
 check "newline-title draft is valid YAML frontmatter" yaml_ok "$NL_DRAFT"
 check "title folded to one line" grep -q '^title: "line one line two"$' "$NL_DRAFT"
@@ -163,7 +165,7 @@ check "rule-id starting non-letter refused" refuses --slug ok-slug --kind rule -
 # a clean kebab-case rule-id is accepted and lands as the id: scalar.
 "$SCRIPT" --slug selftest-rid --kind rule --no-promote --rule-id 'custom-rule-id' \
   --learning 'rid body' >/dev/null
-RID_DRAFT="$PENDING/selftest-rid-rule-draft.md"
+RID_DRAFT="$(draft_path selftest-rid)"
 check "valid --rule-id accepted" test -f "$RID_DRAFT"
 check "valid --rule-id written as id: scalar" grep -q '^id: custom-rule-id$' "$RID_DRAFT"
 rm -f "$RID_DRAFT"

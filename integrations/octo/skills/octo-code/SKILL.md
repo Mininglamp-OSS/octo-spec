@@ -78,8 +78,8 @@ questions, discussions, or product decisions.
      — not the implementing session self-certifying) → Iterate if needed →
      **Finish incl. learning reflow** (slim journal entry — one-line result +
      `## Learning`, no per-task log.md; if the task produced a reusable learning,
-     land it in `.octospec/rules/<id>.md` + `rules/_index.yaml` *in this same PR*,
-     not stranded in `learnings/pending/`);
+     land it in `.octospec/rules/<id>.md` + `rules/_index.yaml` *in this same PR*
+     and delete the scratch draft);
    - create branch `<type>/<slug>`, conventional commit (git author = the
      configured bot identity), push, open a PR filling the PR template
      (Linked Spec + COMPREHENSION for load-bearing changes).

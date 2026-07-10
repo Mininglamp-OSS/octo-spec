@@ -129,5 +129,7 @@ full text of every matching rule and follow it, load-bearing rules first.
 
 `/octospec finish` lands a reusable learning **in the same PR** (edit the relevant
 `rules/<rule>.md`, or add a new rule + `_index.yaml` entry) — the PR review is the
-gate. `learnings/pending/` holds only *unresolved* learnings that still need human
-design. This is how the standard gets smarter over time without drifting silently.
+gate. The helper drafts the rule at `tasks/<slug>/<slug>-rule-draft.md` (scratch,
+deleted once landed); a learning that isn't rule-ready stays in the task journal's
+`## Learning`. This is how the standard gets smarter over time without drifting
+silently.

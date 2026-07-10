@@ -186,8 +186,8 @@ verify against artifacts, then resume the same session if work remains.
    - the repo gate is green: run the commands in `manifest.yaml` `verify.gate`
      (fall back to the repo's documented gate if no `verify:` block);
    - for rule-producing tasks: `.octospec/rules/<id>.md` **and** its
-     `rules/_index.yaml` entry exist (learning landed, not stranded in
-     `learnings/pending/`);
+     `rules/_index.yaml` entry exist (learning landed as a rule, and the scratch
+     `tasks/<slug>/<slug>-rule-draft.md` deleted — not left behind);
    - a **slim** journal entry written under `.octospec/journal/` (one-line result
      + `## Learning`; no per-task log.md);
    - OKF lint passes (`<octo-spec>/scripts/octospec-lint.sh .`);

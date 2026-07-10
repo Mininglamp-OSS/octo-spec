@@ -7,6 +7,17 @@ Creation / Update / Deprecation of a knowledge unit.
 
 ## 2026-07-10 (PR #21 review fixes)
 
+- **Deprecation** — **Removed `learnings/pending/`.** It was a permanently-empty
+  dead-letter: the only writer (`octospec-update-spec.sh --kind=rule`) put a rule
+  *draft* there, and Finish required the draft to be promoted to `rules/` and
+  deleted in the same PR — so nothing ever rested there. The rule draft now lands
+  beside the task's spec at `.octospec/tasks/<slug>/<slug>-rule-draft.md` (rides
+  the task branch, visible in review, deleted once the rule lands). A learning
+  that isn't rule-ready stays in the task journal's `## Learning` — there is no
+  separate queue. Deleted the `learnings/` template dir; updated the helper +
+  selftest (drafts under `tasks/<slug>/`), the workflow skill, octo-code adapter,
+  docs, and both READMEs.
+
 - **Fix** — **Sync refreshes the managed template surfaces from `GLOBAL_SRC` (fixes
   the upgrade gate-bypass at its root).** The prune added earlier reconciled the
   repo root against the repo's *vendored* `.octospec/.claude/`, which sync never
