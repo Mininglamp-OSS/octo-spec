@@ -19,30 +19,25 @@ flowchart TD
     subgraph SOT["Source of truth (in the repo)"]
         R[".octospec/rules/<br/>team conventions"]
         G[".octospec/_global/<br/>org-wide rules (synced, git-ignored)"]
+        SK[".claude/skills/octospec-workflow<br/>6 阶段流程(唯一真源)"]
     end
 
-    subgraph Pointers["Entry-point pointers (just signposts)"]
-        C["CLAUDE.md"]
-        A["AGENTS.md"]
-        CMD[".claude/commands/<br/>slash commands"]
+    subgraph Entry["Claude Code 入口"]
+        SKILL["skill(自动发现)"]
+        CMD["/octospec 命令(手动)"]
     end
 
-    subgraph Agents["Whoever does the work"]
-        CC["Claude Code"]
-        CX["Codex"]
-        OC["OpenClaw"]
-    end
+    CC["Claude Code"]
 
-    R --> C & A
+    R --> SK
     G --> R
-    C --> CC
+    SK --> SKILL
+    SK --> CMD
+    SKILL --> CC
     CMD --> CC
-    A --> CX
-    A --> OC
-    OC -.spawns.-> CC
-    OC -.spawns.-> CX
+    R --> CC
 
-    CC & CX & OC --> OUT["Code that follows<br/>the same rules"]
+    CC --> OUT["Code that follows<br/>the same rules"]
 ```
 
 **一个真相源(`.octospec/`),多个入口点。**
@@ -59,19 +54,16 @@ octo-spec 是 **git 原生(git-native)** 且 **Claude Code 优先(Claude Code fi
 
 - **git** —— octo-spec 是 git 原生的;规范随仓库一起流转。
 - **bash** —— 用于运行 `octospec-sync.sh`(接入)以及各助手脚本。
-- **python3** —— 接入时即需要:`octospec-sync.sh` 会调用
-  `octospec_sync_block.py` 来 bootstrap/更新 agent 文件(`CLAUDE.md`、
-  `AGENTS.md` 等)。这一步只用标准库,无需额外包。
-- **PyYAML** —— 额外用于运行 OKF lint(`octospec-lint.sh`),
+- **PyYAML** —— 用于运行 OKF lint(`octospec-lint.sh`),
   用 `pip install pyyaml` 安装。
-- 一个**编码 agent**(Claude Code、Codex、OpenClaw 等)来执行工作流。
+- **Claude Code** 来执行工作流(skill + `/octospec` 命令)。
   octo-spec 提供规则和脚本,真正写代码的是 agent。
 
 ## 快速开始
 
-**最快路径(零 shell):把下面这句话粘给你的编码 agent**(Claude Code / Codex / OpenClaw):
+**最快路径(零 shell):把下面这句话粘给 Claude Code:**
 
-> 读取 https://raw.githubusercontent.com/Mininglamp-OSS/octo-spec/v1.2.0/BOOTSTRAP.md 并按它把 octo-spec 接入这个仓库。
+> 读取 https://raw.githubusercontent.com/Mininglamp-OSS/octo-spec/v2.1.0/BOOTSTRAP.md 并按它把 octo-spec 接入这个仓库。
 
 它会克隆钉死版本的 octo-spec,再帮你跑标准的 octospec-init 接入。下面的手动步骤仍是 source of truth。
 
@@ -86,55 +78,62 @@ cp -r <path-to>/octo-spec/templates/octospec-init .octospec
 #    checkout —— pin 必须与该 checkout 的 VERSION 文件一致,否则 sync 直接 fail-fast。
 export GLOBAL_SRC=/path/to/octo-spec
 
-# 3. Sync。它会把全局规则 vendor 进 .octospec/_global/,把 octospec 块写进
-#    CLAUDE.md / AGENTS.md,并把工具期望落在仓库根的脚手架「物化」出来:
-#    slash 命令 + workflow skill 落到 .claude/,PR 模板落到 .github/。
-#    开箱即用,且幂等。
+# 3. Sync。它会把全局规则 vendor 进 .octospec/_global/,并把 Claude Code 期望的
+#    仓库根脚手架「物化」出来:/octospec 命令 + workflow skill 落到 .claude/,
+#    PR 模板落到 .github/。它**不**写 CLAUDE.md / AGENTS.md。开箱即用,且幂等。
 ./.octospec/scripts/octospec-sync.sh
 
 # 4. 自检:跑 OKF lint(lint 脚本不 vendor,从 checkout 跑)
 "$GLOBAL_SRC/scripts/octospec-lint.sh" .
 ```
 
-到这里,**接入就完成了**。仓库现在带上了规则、agent 指令块、slash 命令(落在仓库根
-`.claude/`,这样 Claude Code 才能发现)、以及 PR 模板(落在 `.github/`)。把新增文件
-提交(`.octospec/`、根 `.claude/`、`.github/`,以及被更新的 `CLAUDE.md` / `AGENTS.md`);
-此后每个同事只要 `git pull`。
+到这里,**接入就完成了**。仓库现在带上了规则、`/octospec` 命令 + workflow skill(落在
+仓库根 `.claude/`,这样 Claude Code 才能发现)、以及 PR 模板(落在 `.github/`)。把新增文件
+提交(`.octospec/`、根 `.claude/`、`.github/`);此后每个同事只要 `git pull`。sync **不**
+写 `CLAUDE.md` / `AGENTS.md` —— octospec 靠 `.claude/` 下的 skill + 命令被发现。
 
-**接下来 loop 怎么触发:** 跟你的编码 agent 说「加个功能」/「修这个 bug」,或者用 slash
-命令显式驱动单个阶段(`/octospec-plan`、`/octospec-go`、`/octospec-check`、
-`/octospec-finish`)。4 阶段循环由 **agent** 执行 —— 没有可粘贴的 loop CLI(见下方
-[4 阶段循环](#4-阶段循环))。
+**接下来 loop 怎么触发:** 跟 Claude Code 说「加个功能」/「修这个 bug」(workflow skill
+自动触发),或者用一个命令显式驱动单个阶段(`/octospec discover|plan|implement|verify|iterate|finish`,
+以及 `approve`、`autopilot`、`next`、`status`)。6 阶段循环由 **agent** 执行 —— 没有可粘贴的 loop CLI(见下方
+[6 阶段循环](#6-阶段循环))。
 
-关于 Claude Code 的 slash 命令工作流,见 [`docs/CLAUDE-WORKFLOW.md`](docs/CLAUDE-WORKFLOW.md)。
+关于 Claude Code 的命令工作流,见 [`docs/CLAUDE-WORKFLOW.md`](docs/CLAUDE-WORKFLOW.md)。
 
 ## 核心理念
 
 | 能力 | 它带来的改变 |
 |---|---|
 | **规则自动注入** | 在 `.octospec/rules/` 里把约定写一次,然后让相关上下文被注入到每次 AI 会话中,而不必反复重复你自己。 |
-| **以任务为中心的工作流** | 把任务简报(brief)、实现上下文和状态都放在 `.octospec/tasks/` 里,让 AI 的工作保持结构化。 |
-| **项目记忆** | `.octospec/journal/` 中的共享日志保留了上一次发生过什么,这样每个新会话都能带着真实上下文起步。 |
+| **以任务为中心的工作流** | 把探索笔记(discovery)、任务规格(spec)和状态都放在 `.octospec/tasks/` 里,让 AI 的工作保持结构化。 |
+| **项目记忆** | `.octospec/journal/` 中的日志保留了上一次发生过什么,这样每个新会话都能带着真实上下文起步。 |
 | **团队共享标准** | 规格存在仓库里,因此某个人来之不易的一条规则能惠及整个团队。 |
 
-## 4 阶段循环
+## 6 阶段循环
 
 ```mermaid
 flowchart LR
-    P["规划"] --> I["实现"] --> V["验证"] --> F["收尾"]
-    F -.提炼学习成果.-> P
+    D["探索"] --> P["规划"] --> A{"已批准?"}
+    A -->|是| I["实现"] --> V["验证"]
+    A -->|否| P
+    V -->|通过| F["收尾"]
+    V -->|失败| IT["迭代"]
+    IT -->|仅实现/测试| V
+    IT -->|改动 spec| P
+    F -.提炼学习成果.-> D
 ```
 
 ```
-Plan      → 写一份简报;AI 可以从现有代码起草,由你确认
-Implement → AI 在相关规则自动注入的情况下写代码(不提交)
-Verify    → 对照规则 + lint/类型检查/测试来校验 diff,并自我修复
+Discover  → 只读:理解任务将触碰的代码(写入 discovery.md)
+Plan      → 从 discovery 派生一份 spec;由真人 **批准(approve)** 其 revision
+Implement → 先校验 approval 门,再按 TDD(Red→Green→Refactor)在相关规则注入下写代码
+Verify    → 由**独立评审**(fresh context)对照 spec + 本仓库的 verify.gate 校验 diff
+Iterate   → (可选)返工;改动 spec 的返工会重新触发 approval
 Finish    → 运行一次最终检查,然后把新的学习成果于同一 PR 内提炼回 rules/
-            (无死信;pending/ 只留未决项)
+            (无死信队列;够格成 rule 就进 rules/,否则留 journal)
 ```
 
-> **这个 loop 由你的编码 agent 执行,不是一组可粘贴的 CLI 命令。** 由 Claude Code 的
-> slash 命令或 `octospec-workflow` skill 驱动 agent 走完这几个阶段。**octo-spec 本身
+> **这个 loop 由你的编码 agent 执行,不是一组可粘贴的 CLI 命令。** 由 `/octospec`
+> 命令或 `octospec-workflow` skill 驱动 agent 走完这几个阶段。**octo-spec 本身
 > 不含运行时引擎**:它的脚本只做 **sync**(接入 / vendor 全局规则 + 物化根脚手架)、
 > **lint**(OKF 一致性)、以及收尾阶段的 **learning-reflow**(`octospec-update-spec.sh`)。
 > 每个阶段所需的推理由 agent 负责。
@@ -158,7 +157,7 @@ v0.1 —— 一种来自 Google Cloud Knowledge Catalog、采用 Apache-2.0 许�
 无需专用 SDK agent 即可解析、在版本控制中可 diff、并且可在工具与组织之间移植。通过对齐 OKF,
 一个 `.octospec/` 目录就是一个有效的 OKF 知识包(knowledge bundle)—— 任何支持 OKF 的工具或
 agent 都能读取它 —— 同时 octospec 在其之上,作为 OKF 允许的扩展字段(extension fields),叠加了
-自己的工作流层(按需注入规则、4 阶段循环以及 review 门禁)。
+自己的工作流层(按需注入规则、6 阶段循环以及 review 门禁)。
 
 ## 目录布局(每仓库的 `.octospec/`)
 
@@ -169,21 +168,21 @@ agent 都能读取它 —— 同时 octospec 在其之上,作为 OKF 允许的�
     <domain>.md
     _index.yaml          # 规则清单 + 注入触发条件 + 优先级
   tasks/<slug>/
-    brief.md             # 目标 / 背景 / 关键承重清单(load-bearing list) / 验收
-    context.yaml         # 已注入的规则 id + 注入指纹(fingerprint)
-  journal/shared/<slug>.md      # 团队可见的结构性学习成果
-  journal/by-actor/<actor>/<slug>.md  # 单个 actor 的任务级笔记(仓内)
-  learnings/pending/<slug>.md   # 仅存放尚需人工设计的未决学习项
+    discovery.md           # 探索(Discover)阶段笔记:任务将触碰什么
+    spec.md               # 目标 / 承重清单 / 验收 / revision + approvals
+    <slug>-rule-draft.md  # (临时)助手生成的 rule 草稿,落地后删除
+  journal/<slug>.md        # 单任务记录 + 结构性学习成果
   scripts/
-    octospec-update-spec.sh     # 收尾阶段助手:生成 rule 草稿 + promotion issue
-                                # 正文,或写入 per-actor journal 条目
+    octospec-update-spec.sh     # 收尾阶段助手:生成 rule 草稿 + 供同一 PR 内落地的
+                                # promotion 材料
 ```
 
 > 可复用的学习成果在收尾(Finish)阶段**于同一个 PR 内**就地回流(直接编辑相关的
 > `rules/<rule>.md`,或新增一条 rule + `_index.yaml` 条目)——PR 评审即闸门。
-> `learnings/pending/` 仅保留**尚未决、需要人工设计**才能成为规则的学习项;已完成的
-> 学习成果绝不会滞留等待另一个 PR。`.octospec/scripts/octospec-update-spec.sh`
-> 助手负责生成这些草稿素材,绝不直接写入 main 的 `rules/`。
+> 助手把 rule 草稿写在 `tasks/<slug>/<slug>-rule-draft.md`(临时,落地后删除);尚不
+> 适合成为规则的学习成果就留在任务 journal 的 `## Learning` 里,没有独立的死信队列。
+> `.octospec/scripts/octospec-update-spec.sh` 助手负责生成这些草稿素材,绝不直接写入
+> main 的 `rules/`。
 
 ## OKF 一致性(conformance)
 
@@ -221,7 +220,7 @@ index/log 是没有 frontmatter 的纯 markdown),需填空的 `*.template.md` �
 <summary><strong>需要安装什么吗?</strong></summary>
 
 没有需要运行的服务。维护者把仓库接入并提交结果之后,每个同事只要 `git pull` —— 规则、
-agent 块、slash 命令、PR 模板都随仓库带过来。要运行 OKF lint 则需要 `python3` + PyYAML
+`/octospec` 命令、workflow skill、PR 模板都随仓库带过来。要运行 OKF lint 则需要 `python3` + PyYAML
 (见[前置依赖](#前置依赖prerequisites))。
 </details>
 
@@ -229,8 +228,8 @@ agent 块、slash 命令、PR 模板都随仓库带过来。要运行 OKF lint �
 <summary><strong>octo-spec 会替我跑编码 loop 吗?</strong></summary>
 
 不会。octo-spec 提供规则和三个脚本(sync / lint / learning-reflow)。
-Plan→Implement→Verify→Finish 这个 loop 由你的**编码 agent** 执行(经由 Claude Code 的
-slash 命令或 `octospec-workflow` skill)。没有运行时引擎,也没有可粘贴的 loop CLI。
+Discover→Plan→Implement→Verify→Iterate→Finish 这个 loop 由你的**编码 agent** 执行
+(经由 `/octospec` 命令或 `octospec-workflow` skill)。没有运行时引擎,也没有可粘贴的 loop CLI。
 </details>
 
 <details>
@@ -252,8 +251,9 @@ merge。删掉 `.octospec/` 即可完全回滚。
 <summary><strong>为什么 sync 在 <code>.octospec/</code> 之外也写了文件?</strong></summary>
 
 这是有意为之。Claude Code 只在仓库根 `.claude/` 发现 slash 命令 / skill,GitHub 也只在
-仓库根 `.github/` 套用 PR 模板。所以 sync 把这些从 `.octospec/` 物化到根目录 ——
-install-if-missing(绝不覆盖你已自定义的文件),且重跑幂等。
+仓库根 `.github/` 套用 PR 模板。所以 sync 把这些从 `.octospec/` 物化到根目录 —— **octospec
+托管**的文件(`/octospec` 命令、`octospec-*` skill、PR 模板)每次运行都从源刷新,保证升级能落地;
+你自己在 `.claude/` 下新增的文件则是 install-if-missing、保持不动。重跑幂等。
 </details>
 
 ## 许可证
@@ -265,10 +265,10 @@ octo-spec 采用 **Apache License 2.0** 许可。见 [LICENSE](LICENSE) 和 [NOT
 <details>
 <summary>sync 机制与注意事项</summary>
 
-- 模板自带它自己的 `scripts/`(`octospec-sync.sh` + `octospec_sync_block.py`),所以被复制出来的 `.octospec/` 自身就带着这些 sync 脚本 —— 你不需要为了定位脚本而保留一条回到 octo-spec checkout 的路径。全局规则在 sync 时仍然来源于一个 octo-spec checkout(见 `GLOBAL_SRC`)。
-- sync 会把全局规则 vendor 进被 git 忽略的 `.octospec/_global/`,并且把 octospec 的 agent 指令块写入你的 agent 文件(`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` / `QWEN.md`),写在受管标记(managed markers)之间。
-- sync 还会**物化仓库根脚手架**(工具只在仓库根才能发现的那部分):把 `.octospec/.claude/`(slash 命令 + skill)复制到仓库根 `.claude/`,把 `.octospec/.github/PULL_REQUEST_TEMPLATE.md` 复制到 `.github/`。这是 install-if-missing —— 目标位置已存在的文件保持不动,因此手写的自定义内容绝不会被覆盖。
-- 每次你 bump 这个 pin 时都可以重新运行;它是幂等的,并且会保留标记之外的任何内容 —— 包括文件原有的行尾(LF/CRLF)和末尾换行符。第二次运行会报告根脚手架已存在。
-- vendor 进 `.octospec/scripts/` 的脚本是本仓库中规范来源 `scripts/octospec-sync.sh` 和 `scripts/octospec_sync_block.py` 的逐字节副本;CI(`scripts/test_octospec_sync_sh.sh`)会断言它们保持完全一致,因此副本绝不会悄悄偏离被测试过的源。要升级工具本身,就从一个更新的 octo-spec checkout 重新复制模板的 `scripts/`(或仅复制这两个文件)。
+- 模板自带它自己的 `scripts/`(`octospec-sync.sh`),所以被复制出来的 `.octospec/` 自身就带着 sync 脚本 —— 你不需要为了定位脚本而保留一条回到 octo-spec checkout 的路径。全局规则在 sync 时仍然来源于一个 octo-spec checkout(见 `GLOBAL_SRC`)。
+- sync 会把全局规则 vendor 进被 git 忽略的 `.octospec/_global/`。它**不**写 `CLAUDE.md`/`AGENTS.md`/`GEMINI.md`/`QWEN.md` —— octospec 靠 `.claude/` 下的 skill + 命令被发现(agent 指令块注入机制已移除)。
+- sync 还会**物化仓库根脚手架**(工具只在仓库根才能发现的那部分):把 `.octospec/.claude/`(`/octospec` 命令 + workflow skill)复制到仓库根 `.claude/`,把 `.octospec/.github/PULL_REQUEST_TEMPLATE.md` 复制到 `.github/`。**octospec 托管**的文件(`octospec` 命令、`octospec-*` skill、PR 模板)每次运行都从源刷新;你自己在 `.claude/` 下新增的文件则是 install-if-missing、保持不动。它还会**清除**(prune)pin 版本已不再提供的 octospec 托管命令(`.claude/commands/octospec*.md`),但绝不动你自己的命令。
+- **一步升级。** sync 每次运行都会从 `GLOBAL_SRC` 刷新 octospec 托管的所有面 —— vendored 的 `.octospec/.claude/`、`.octospec/.github/`、填空模板,以及物化到仓库根的 skill / 命令 / PR 模板 —— 与刷新 `_global/` 同一套机制。所以升级只需 **bump `manifest.yaml` 的 pin 再重跑 sync**;新命令/skill/PR 模板会落地,过时命令被自动清除。你自己的内容(`manifest.yaml`、真实的 `tasks/`、`journal/`、`rules/`,以及你在 `.claude/` 下新增的非 octospec 文件)绝不会被动。
+- vendor 进 `.octospec/scripts/` 的脚本是本仓库中规范来源 `scripts/octospec-sync.sh` 的逐字节副本;CI(`scripts/test_octospec_sync_sh.sh`)会断言它们保持完全一致,因此副本绝不会悄悄偏离被测试过的源。要升级工具**本身**(sync 脚本),就从一个更新的 octo-spec checkout 重新复制模板的 `scripts/` —— 这是 sync 唯一无法原地刷新的托管面(它就是正在运行的脚本)。
 
 </details>

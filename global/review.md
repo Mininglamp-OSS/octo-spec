@@ -24,10 +24,10 @@ already covers.
 
 ## What every review must check
 
-1. **Correctness** — does the change do what its spec/brief claims? Trace the
+1. **Correctness** — does the change do what its spec claims? Trace the
    load-bearing path, not just the happy path.
-2. **Spec alignment** — does the diff actually satisfy the linked brief? Flag
-   changes that touch load-bearing behavior the brief did not cover.
+2. **Spec alignment** — does the diff actually satisfy the linked spec? Flag
+   changes that touch load-bearing behavior the spec did not cover.
 3. **Security** — input validation, authz/ACL boundaries, no fail-open paths,
    no secrets in code or logs.
 4. **Tests** — does the change carry tests proportional to its risk?

@@ -1,6 +1,6 @@
 ---
 name: octo-code
-description: Run the octo-spec engineering flow from an octo chat message. A team member sends a plain-language coding request ("add X to repo Y" / "fix bug Z"); the bot onboards the repo to octo-spec if needed, runs Claude Code in headless mode through the 4-phase loop (Plan/Implement/Verify/Finish incl. learning reflow), opens a PR, and reports back in the thread. Use for octo coding requests that should produce a real PR without the user opening Claude Code. ACP-free, no multica dependency.
+description: Run the octo-spec engineering flow from an octo chat message. A team member sends a plain-language coding request ("add X to repo Y" / "fix bug Z"); the bot onboards the repo to octo-spec if needed, runs Claude Code in headless mode through the 6-phase loop (Discover/Plan/Implement/Verify/Iterate/Finish incl. learning reflow), pausing after Plan for human approval of the spec, opens a PR, and reports back in the thread. Use for octo coding requests that should produce a real PR without the user opening Claude Code. ACP-free, no multica dependency.
 user-invocable: false
 ---
 
@@ -13,7 +13,7 @@ the standard being followed is **octo-spec** (the repo this skill ships in).
 > **Layering.** This is an *integration adapter*, not part of octo-spec core.
 > octo-spec stays spec-only (sync / lint / learning-reflow, no runtime engine).
 > This skill only orchestrates: it routes intent, launches the external engine,
-> and checks completion. The 4-phase reasoning is the engine's job.
+> and checks completion. The 6-phase reasoning is the engine's job.
 
 Shared procedures (preflight, engine call, completion check, onboarding,
 cleanup) live in **`../shared/octo-code-core.md`** — read it; this file is the
@@ -67,26 +67,39 @@ questions, discussions, or product decisions.
    explicit step first.
 
 3. **Build the task prompt.** Instruct the engine to:
-   - read `CLAUDE.md` and follow the octo-spec standard;
-   - run the full 4-phase loop: Plan (write `.octospec/tasks/<slug>/brief.md`)
-     → Implement → Verify (`pytest`/repo gate green) → **Finish incl. learning
-     reflow** (journal entry; if the task produced a reusable learning, land it
-     in `.octospec/rules/<id>.md` + `rules/_index.yaml` *in this same PR*, not
-     stranded in `learnings/pending/`);
+   - follow the `octospec-workflow` skill (under `.claude/`) and the octo-spec standard;
+   - run the full 6-phase loop: Discover (create the task branch, write + commit
+     `.octospec/tasks/<slug>/discovery.md`) → Plan (write + commit
+     `.octospec/tasks/<slug>/spec.md`, revision 1) → **STOP for the approval
+     gate** → Implement **TDD-style: commit failing Acceptance tests
+     (`red: <slug>`) before production code, then green, then refactor** →
+     **Verify as an independent pass** (a fresh-session review vs the spec's
+     Acceptance + the `red:`-before-code trail, plus `manifest.verify.gate` green
+     — not the implementing session self-certifying) → Iterate if needed →
+     **Finish incl. learning reflow** (slim journal entry — one-line result +
+     `## Learning`, no per-task log.md; if the task produced a reusable learning,
+     land it in `.octospec/rules/<id>.md` + `rules/_index.yaml` *in this same PR*
+     and delete the scratch draft);
    - create branch `<type>/<slug>`, conventional commit (git author = the
      configured bot identity), push, open a PR filling the PR template
      (Linked Spec + COMPREHENSION for load-bearing changes).
 
-4. **Run the engine** (`shared/octo-code-core.md` §B): `claude -p` with
-   `--output-format json`, scoped `--allowedTools`, `--permission-mode
+4. **Run the engine — in two halves around the approval pause**
+   (`shared/octo-code-core.md` §B, §B2). First `claude -p` runs Discover + Plan
+   and stops after the spec; post the spec to the thread and wait for the
+   originator's `approve`. On approval, write the approval record and `--resume`
+   to continue from Implement. Use `--output-format json`, `--allowedTools`
+   **derived from `manifest.verify.tools`** (not hardcoded), `--permission-mode
    acceptEdits`, `--max-turns`, cwd = the worktree. Capture `run.json`.
 
 5. **Completion check + resume** (`shared/octo-code-core.md` §C). Parse the JSON
    (`session_id`, `terminal_reason`, `total_cost_usd`), then verify the artifact
-   checklist (branch pushed, tests green, rule+index landed if applicable,
-   journal written, OKF lint OK, **PR opened**). If anything is missing,
-   `--resume <session_id>` with a focused prompt naming the gaps. Cap resumes;
-   open the PR directly as a fallback. **Never trust a bare "done."**
+   checklist (spec revision approved, **Verify ran independently**, **TDD trail
+   intact — `red:` commit precedes the code**, branch pushed, `verify.gate` green,
+   rule+index landed if applicable, slim journal written, OKF lint OK, **PR
+   opened**). If anything is missing, `--resume <session_id>` with a focused prompt
+   naming the gaps. Cap resumes; open the PR directly as a fallback. **Never trust
+   a bare "done."**
 
 6. **Report back** in the originating octo thread: PR URL, test result, cost
    (`total_cost_usd`), and (if a rule was reflowed) which rule landed. Then
@@ -138,8 +151,9 @@ No commands to memorize — plain language in the octo thread:
 > *"use octo-code to add a rate-limit middleware to octo-server"*
 > *"octo-code: fix the null-pointer in octo-web's login flow"*
 
-The bot parses intent + repo, runs the flow above, and replies in-thread with the
-PR URL, test result, and cost. The user only reviews/approves the PR.
+The bot parses intent + repo, runs the flow above, **posts the spec back for you
+to `approve`**, then finishes and replies in-thread with the PR URL, test result,
+and cost. You approve the spec up front and review/approve the PR at the end.
 
 ## Validation
 

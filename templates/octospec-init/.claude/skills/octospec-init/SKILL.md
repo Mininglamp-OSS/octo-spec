@@ -7,9 +7,10 @@ description: >-
   octospec", "set up octospec here", "add the octo-spec standard to this repo",
   在这个仓库接入 octospec, 启用 octo-spec 标准, 初始化 .octospec。 This is a
   one-time接入引导: copy the template, pin the global version, run the sync
-  script, confirm the agent-instruction block landed, and self-check with lint.
+  script, confirm the root `.claude/` scaffolding materialized, and self-check
+  with lint.
   Once the repo already has a working `.octospec/`, stop using this skill — the
-  day-to-day 4-phase flow is owned by the octospec-workflow skill instead.
+  day-to-day 6-phase flow is owned by the octospec-workflow skill instead.
 ---
 
 # octospec-init (onboarding)
@@ -21,7 +22,8 @@ handful of real shell steps below, run by hand.
 
 > Relationship: **init = one-time onboarding** (this skill). Once `.octospec/`
 > exists and syncs cleanly, day-to-day work hands off to the **octospec-workflow**
-> skill (the runtime 4-phase flow: Plan, Implement, Verify, Finish). The two do
+> skill (the runtime 6-phase flow: Discover, Plan, Implement, Verify, Iterate,
+> Finish). The two do
 > not overlap — init wires the repo up, workflow drives changes afterward.
 
 ## When to run this
@@ -54,7 +56,7 @@ Edit `.octospec/manifest.yaml`:
   checkout you are syncing from. Read it from that checkout's `VERSION` file
   (`cat <path-to>/octo-spec/VERSION`) rather than hardcoding a number here, so
   this instruction never drifts when octo-spec bumps its version. For example,
-  if `VERSION` says `1.2.0`, set `inherits: octo-spec@1.2.0`. The pin must match
+  if `VERSION` says `2.1.0`, set `inherits: octo-spec@2.1.0`. The pin must match
   the `GLOBAL_SRC` checkout's `VERSION` exactly or `octospec-sync.sh` fails the
   version assertion. The template manifest already ships pinned to this
   checkout's version, so when you sync from the same checkout no edit is needed.
@@ -73,35 +75,52 @@ GLOBAL_SRC=/path/to/octo-spec ./.octospec/scripts/octospec-sync.sh
 
 This vendors the pinned global rules into the git-ignored cache
 `.octospec/_global/` (the script adds `_global/` to `.octospec/.gitignore`
-automatically), writes the shared agent-instruction block into the
-agent-instruction files present in the repo, AND materializes the repo-root
-scaffolding that tools only discover at the root:
+automatically) AND materializes the repo-root scaffolding that tools only
+discover at the root:
 - copies `.octospec/.claude/` to the repo root `.claude/` so Claude Code finds
-  the slash commands (`/octospec-plan`, `/octospec-go`, `/octospec-check`,
-  `/octospec-finish`) and the workflow skill, and
+  the `/octospec <phase> <slug>` command (phases:
+  `discover|plan|implement|verify|iterate|finish`, plus `approve|next|status|autopilot`)
+  and the workflow skill, and
 - copies `.octospec/.github/PULL_REQUEST_TEMPLATE.md` to `.github/` so GitHub
   applies the PR template (the body the Finish phase pre-fills).
 
-This step is **install-if-missing**: any `.claude/` or `.github/` file you have
-already customized at the root is left untouched, and re-running sync is
-idempotent. Commit the materialized root `.claude/` and `.github/` so teammates
-get them on a plain `git pull`.
+octospec is **Claude-only**: it is discovered through the Claude Code skill +
+command under `.claude/`. Sync does **not** write `CLAUDE.md` / `AGENTS.md` /
+`GEMINI.md` / `QWEN.md` — there is no injected instruction block. (Multi-agent
+distribution — shipping the skill into other agents' native skill dirs — is a
+future addition, not part of this flow.)
 
-### 4. Confirm the agent-instruction block landed
+At the root, sync uses **two policies**: octospec-managed files (the `octospec`
+command, the `octospec-*` skills, the PR template) are **refreshed from source**
+every run so upgrades land; a file you authored yourself under `.claude/` is
+**install-if-missing** and left untouched. Re-running sync is idempotent. It also
+**prunes** octospec-managed root commands (`.claude/commands/octospec*.md`) that
+the pinned version no longer ships (never your own commands). Commit the
+materialized root `.claude/` and `.github/` so teammates get them on a plain
+`git pull`.
 
-The synced block is delimited by whole-line markers
-`<!-- octospec:begin -->` / `<!-- octospec:end -->` in each agent file. Sync
-behavior:
-- **CLAUDE.md and AGENTS.md** are the two default entry points — whichever is
-  missing is bootstrapped (created) so both Claude Code and Codex get the block.
-- **GEMINI.md / QWEN.md** are only touched when they already exist; they are
-  never force-created.
-- Everything outside the markers (and the file's line endings / trailing
-  newline) is preserved; a malformed marker state makes sync refuse that one
-  file rather than risk clobbering hand-written content.
+> **Upgrading is one step.** Sync **refreshes the octospec-managed surfaces** —
+> the vendored `.octospec/.claude/` + `.octospec/.github/` + fill-in templates,
+> AND the materialized repo-root skill / command / PR template — from `GLOBAL_SRC`
+> every run (the same freshness model as `_global/`). So to move to a newer
+> octo-spec you only bump `inherits:` in `manifest.yaml` and re-run sync from the
+> matching checkout: the new command/skill/PR-template land at the root and
+> obsolete commands are pruned automatically. The one surface sync can't refresh
+> in place is `.octospec/scripts/` itself (it is the running script) — re-copy the
+> template `scripts/` on a tooling upgrade. Your own content (`manifest.yaml`,
+> real `tasks/`, `journal/`, `rules/`, and any non-octospec files under
+> `.claude/`) is never touched.
 
-Open one agent file and confirm the `octospec:begin`/`octospec:end` region is
-present.
+### 4. Confirm the scaffolding materialized
+
+Confirm sync placed the Claude Code entry points at the repo root:
+- `.claude/commands/octospec.md` — the `/octospec <phase> <slug>` command.
+- `.claude/skills/octospec-workflow/SKILL.md` — the workflow skill (the single
+  source of truth for the 6-phase flow).
+- `.github/PULL_REQUEST_TEMPLATE.md` — the PR template.
+
+Sync never touches `CLAUDE.md`/`AGENTS.md`, so there is no instruction block to
+verify — the skill is what Claude Code auto-discovers.
 
 ### 5. Self-check with lint
 
@@ -124,6 +143,6 @@ so this skill itself is out of scope).
 ## After onboarding
 
 Once the steps above pass, this repo is onboarded. Hand day-to-day coding back to
-the **octospec-workflow** skill, which runs the 4-phase flow for each non-trivial
+the **octospec-workflow** skill, which runs the 6-phase flow for each non-trivial
 change. Re-run step 3 (sync) any time you bump the pin in `manifest.yaml` — it is
 idempotent.

@@ -2,8 +2,9 @@
 <!-- What this PR does, in plain language. -->
 
 ## Linked Spec
-<!-- Link to .octospec/tasks/<slug>/brief.md or the issue this implements.
-     Required when the change touches load-bearing behavior. -->
+<!-- Link to .octospec/tasks/<slug>/spec.md (note the approved revision, e.g.
+     spec.md r2) or the issue this implements. Required when the change touches
+     load-bearing behavior. The spec's current revision must be human-approved. -->
 
 ## How verified
 <!-- Tests run, manual steps, evidence. -->

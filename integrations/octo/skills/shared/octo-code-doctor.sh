@@ -110,14 +110,10 @@ else
   add fail req "jq" "not found — required to parse claude --output-format json"
 fi
 
-# 6. python3 + pytest (typical repo verify gate; warn, not hard-fail)
+# 6. python3 (only a generic host tool now; repo-specific gate tools are checked
+#    per-repo from manifest.verify.tools in step 7). Soft/optional.
 if have python3; then
   add ok opt "python3" "$(python3 --version 2>&1 | tr -d '\r')"
-  if python3 -c 'import pytest' >/dev/null 2>&1; then
-    add ok opt "pytest" "importable"
-  else
-    add warn opt "pytest" "not importable — only needed if the target repo's gate uses pytest"
-  fi
 else
   add warn opt "python3" "not found — only needed for python repo gates"
 fi
@@ -145,6 +141,69 @@ if [ -n "$REPO" ]; then
         add ok req "octo-spec onboarded" "$REPO/.octospec present (pin: $PIN)"
       else
         add fail req "octo-spec onboarded" "$REPO/.octospec present but no manifest pin (inherits/version/pin) found — invalid onboarding; fix the manifest or re-run onboarding (core §D)"
+      fi
+      # Repo-specific verify toolchain: the adapter derives --allowedTools and the
+      # completion gate from manifest `verify.tools`. Check each declared tool is
+      # on PATH. This is language-agnostic (go/pnpm/python3/... — whatever the repo
+      # declares). Missing tools are a soft warning: only the tools the repo's own
+      # gate actually invokes matter, and the doctor cannot know which subset runs.
+      MANI=""
+      for f in "$REPO/.octospec/manifest.yaml" "$REPO/.octospec/manifest.yml"; do
+        [ -f "$f" ] && { MANI="$f"; break; }
+      done
+      if [ -n "$MANI" ]; then
+        # Extract verify.tools, tolerating both YAML forms (best-effort, no YAML dep):
+        #   flow:  tools: [go, gofmt]
+        #   block: tools:
+        #            - go
+        #            - gofmt
+        # SCOPED to the `verify:` block: we only consider a `tools:` key that is
+        # nested under a top-level `verify:` line, so an unrelated `tools:` under
+        # some other section (e.g. build:/deploy:) is never mistaken for it. Try
+        # the flow form on the `tools:` line first; if nothing follows the colon
+        # there, collect the subsequent block-sequence `- item` lines until the
+        # indentation drops back to the `tools:` key (end of the block).
+        VTOOLS="$(awk '
+          # Enter the verify: block on a top-level (unindented) `verify:` key.
+          /^verify[[:space:]]*:/ { in_verify=1; verify_indent=0; next }
+          # A new top-level key (no indent, not a list item) ends the verify block.
+          in_verify && /^[^[:space:]#-]/ && !/^verify[[:space:]]*:/ { in_verify=0 }
+          in_verify && /^[[:space:]]*tools[[:space:]]*:/ {
+            line=$0; sub(/^[[:space:]]*tools[[:space:]]*:[[:space:]]*/, "", line)
+            sub(/#.*$/, "", line); gsub(/[][]/, "", line); gsub(/,/, " ", line)
+            gsub(/["'"'"']/, "", line)
+            if (line ~ /[^[:space:]]/) { print line; exit }   # flow form
+            # block form: read following "- item" lines
+            match($0, /^[[:space:]]*/); key_indent=RLENGTH
+            while ((getline nl) > 0) {
+              match(nl, /^[[:space:]]*/); ind=RLENGTH
+              if (nl ~ /^[[:space:]]*-/) {
+                item=nl; sub(/^[[:space:]]*-[[:space:]]*/, "", item)
+                sub(/#.*$/, "", item); gsub(/["'"'"']/, "", item)
+                gsub(/[[:space:]]+$/, "", item)
+                if (item ~ /[^[:space:]]/) printf "%s ", item
+              } else if (ind <= key_indent && nl ~ /[^[:space:]]/) {
+                break   # dedent to sibling/parent key ends the block
+              }
+            }
+            exit
+          }
+        ' "$MANI" 2>/dev/null | tr -d '\r')"
+        if [ -n "$(printf '%s' "$VTOOLS" | tr -d '[:space:]')" ]; then
+          # Disable globbing so a tool token with a glob char is not expanded
+          # against CWD; word-splitting on whitespace is still intended.
+          set -f
+          for vt in $VTOOLS; do
+            if have "$vt"; then
+              add ok opt "verify tool: $vt" "on PATH"
+            else
+              add warn opt "verify tool: $vt" "declared in manifest verify.tools but not on PATH"
+            fi
+          done
+          set +f
+        else
+          add warn opt "verify tools" "no verify.tools declared in manifest — Verify falls back to CLAUDE.md gates"
+        fi
       fi
     else
       add fail req "octo-spec onboarded" "$REPO has no .octospec/ — NOT onboarded; run onboarding (core §D) before octo-code can run against it"
