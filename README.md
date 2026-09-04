@@ -109,8 +109,10 @@ the new files (`.octospec/`, root `.claude/`, `.github/`, and the updated
 
 **How the loop runs from here:** ask your coding agent to "add a feature" / "fix
 this bug", or drive a single phase explicitly with a slash command
-(`/octospec-plan`, `/octospec-go`, `/octospec-check`, `/octospec-finish`). The
-4-phase loop is executed **by the agent** — there is no loop CLI to paste (see
+(`/octospec-plan`, `/octospec-go`, `/octospec-check`, `/octospec-finish`). Before
+opening a PR, ask it to "review this branch before PR" or "审查、修复并提交" to
+trigger the bundled `octospec-pre-pr-review` skill. The 4-phase loop and pre-PR
+audit are executed **by the agent** — there is no loop CLI to paste (see
 [The 4-phase loop](#the-4-phase-loop) below).
 
 See [`docs/CLAUDE-WORKFLOW.md`](docs/CLAUDE-WORKFLOW.md) for the Claude Code slash
@@ -287,7 +289,7 @@ octo-spec is licensed under the **Apache License 2.0**. See [LICENSE](LICENSE) a
 
 - The template ships its own `scripts/` (`octospec-sync.sh` + `octospec_sync_block.py`), so the copied `.octospec/` carries the sync scripts themselves — you don't need a path back into the octo-spec checkout just to locate the scripts. The global rules are still sourced from an octo-spec checkout at sync time (see `GLOBAL_SRC`).
 - Sync vendors the global rules into git-ignored `.octospec/_global/` AND writes the octospec agent-instruction block into your agent files (`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` / `QWEN.md`), between managed markers.
-- Sync also **materializes repo-root scaffolding** that tools only discover at the root: it copies `.octospec/.claude/` (slash commands + skill) to the repo-root `.claude/`, and `.octospec/.github/PULL_REQUEST_TEMPLATE.md` to `.github/`. This is install-if-missing — an existing destination file is left untouched, so hand-written customizations are never clobbered.
+- Sync also **materializes repo-root scaffolding** that tools only discover at the root: it copies `.octospec/.claude/` (slash commands + skills) to the repo-root `.claude/`, and `.octospec/.github/PULL_REQUEST_TEMPLATE.md` to `.github/`. Every file remains install-if-missing: after the vendored sync script is updated to the pinned release, existing installations receive newly added skills while repository customizations are never overwritten.
 - Re-run any time you bump the pin; it is idempotent and preserves anything outside the markers — including the file's original line endings (LF/CRLF) and trailing newline. A second run reports the root scaffolding as already present.
 - The scripts vendored under `.octospec/scripts/` are byte-for-byte copies of the canonical `scripts/octospec-sync.sh` and `scripts/octospec_sync_block.py` in this repo; CI (`scripts/test_octospec_sync_sh.sh`) asserts they stay identical, so the copy can never silently drift from the tested source. To upgrade the tooling itself, re-copy the template `scripts/` (or just the two files) from a newer octo-spec checkout.
 

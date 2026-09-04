@@ -10,10 +10,18 @@ The slash commands **and** the auto-trigger skill are **committed to the repo**
 under `.claude/`. A team member does **not** install anything: `git clone` /
 `git pull` brings them with the repo.
 
-- **Auto-trigger (skill)** — `.claude/skills/octospec-workflow/`. When a developer
-  asks Claude Code to implement/fix/refactor something, the skill's description
-  matches and Claude **runs the 4-phase flow automatically** — no command to
-  remember. Trivial edits (typo/docs/lint/config) are skipped by design.
+- **Implementation auto-trigger** — `.claude/skills/octospec-workflow/`. When a
+  developer asks Claude Code to implement/fix/refactor something, the skill's
+  description matches and Claude **runs the 4-phase flow automatically** — no
+  command to remember. Trivial edits (typo/docs/lint/config) are skipped by
+  design.
+- **Pre-PR review auto-trigger** — `.claude/skills/octospec-pre-pr-review/`. A
+  request such as "review this branch before PR" or "审查、修复并提交" triggers a
+  skeptical cumulative-diff audit: brief/rule alignment, security and tenant
+  boundaries, state/compensation paths, async/concurrency races, API contracts,
+  risk-proportional tests, optional fixes, and clean commits. It prepares a
+  branch for review but does not replace the independent reviewer required to
+  approve it.
 - **Manual control (slash commands)** — `.claude/commands/octospec-*`. Use these
   to drive a single phase on demand: `/octospec-plan`, `/octospec-go`,
   `/octospec-check`, `/octospec-finish`.
@@ -47,10 +55,12 @@ The skill makes the flow *easy and automatic*; the PR/CI gate makes it *binding*
    Code and Codex get the block; `GEMINI.md` / `QWEN.md` are synced only when they
    already exist. Finally it **materializes the repo-root scaffolding** that
    tools only discover at the root: it copies `.octospec/.claude/` to `.claude/`
-   (so Claude Code finds the slash commands and skill) and
+   (so Claude Code finds the slash commands and skills) and
    `.octospec/.github/PULL_REQUEST_TEMPLATE.md` to `.github/` (so GitHub applies
-   the PR template). This is install-if-missing — any file you have already
-   customized at the root is left untouched, and re-running is idempotent.
+   the PR template). All files remain install-if-missing: after updating the
+   vendored sync script to the pinned release, older installations receive newly
+   shipped skills while existing repository customizations are never overwritten.
+   Re-running is idempotent.
 4. Commit (including the materialized root `.claude/` and `.github/`). From here,
    every team member just pulls.
 

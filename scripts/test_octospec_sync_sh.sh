@@ -358,11 +358,28 @@ else
   note FAIL "repo-root .claude/commands/octospec-* missing after sync"; fail=1
 fi
 
-# GAP-2: workflow skill discoverable at the repo root too.
-if [ -f .claude/skills/octospec-workflow/SKILL.md ]; then
-  note ok "workflow skill materialized to repo-root .claude/skills/"
+# GAP-2: workflow and pre-PR review skills discoverable at the repo root too.
+if [ -f .claude/skills/octospec-workflow/SKILL.md ] \
+   && [ -f .claude/skills/octospec-pre-pr-review/SKILL.md ]; then
+  note ok "workflow/review skills materialized to repo-root .claude/skills/"
 else
-  note FAIL "repo-root .claude/skills/ missing after sync"; fail=1
+  note FAIL "repo-root .claude/skills/ missing workflow or review skill after sync"; fail=1
+fi
+
+# Missing-skill recovery: once an onboarded repo has the current pinned sync
+# script, a missing newly shipped review skill is installed on the next sync.
+rm -f .octospec/.claude/skills/octospec-pre-pr-review/SKILL.md
+rm -f .claude/skills/octospec-pre-pr-review/SKILL.md
+set +e
+GLOBAL_SRC="$REPO" ./.octospec/scripts/octospec-sync.sh > upgrade.log 2>&1
+code8upgrade=$?
+set -e
+if [ "$code8upgrade" -eq 0 ] \
+   && [ -f .octospec/.claude/skills/octospec-pre-pr-review/SKILL.md ] \
+   && [ -f .claude/skills/octospec-pre-pr-review/SKILL.md ]; then
+  note ok "existing installation receives newly shipped canonical skill"
+else
+  note FAIL "existing installation did not receive newly shipped skill"; fail=1
 fi
 
 # GAP-3: PR template installed at the repo root where GitHub looks for it.
@@ -393,7 +410,8 @@ if [ "$code8b" -eq 0 ] && [ "$before_claude" = "$after_claude" ] && [ "$before_p
 else
   note FAIL "root-scaffolding sync not idempotent (code=$code8b)"; fail=1
 fi
-if grep -q "kept 6 existing" out2.log && grep -q "PULL_REQUEST_TEMPLATE.md -> kept existing" out2.log; then
+template_claude_files="$(find "$REPO/templates/octospec-init/.claude" -type f | wc -l | tr -d '[:space:]')"
+if grep -q "kept $template_claude_files existing" out2.log && grep -q "PULL_REQUEST_TEMPLATE.md -> kept existing" out2.log; then
   note ok "idempotent second run reports existing files kept"
 else
   note FAIL "second run did not report kept-existing scaffolding"; fail=1
@@ -401,8 +419,8 @@ fi
 
 cd "$REPO"
 
-# No-clobber: a user's own slash command + PR template survive sync, while
-# missing siblings are still installed.
+# No-clobber: user customizations to a canonical skill, slash command, and PR
+# template survive sync, while missing siblings are still installed.
 tmp9="$(mktemp -d)"; TMP_DIRS+=("$tmp9")
 cd "$tmp9"
 git init -q
@@ -410,6 +428,7 @@ cp -r "$REPO/templates/octospec-init" .octospec
 mkdir -p .claude/commands .github
 printf 'MY CUSTOM PLAN KEEP ME\n' > .claude/commands/octospec-plan.md
 printf 'MY OWN PR TEMPLATE KEEP ME\n' > .github/PULL_REQUEST_TEMPLATE.md
+printf 'MY CUSTOM WORKFLOW KEEP ME\n' > .octospec/.claude/skills/octospec-workflow/SKILL.md
 
 set +e
 GLOBAL_SRC="$REPO" ./.octospec/scripts/octospec-sync.sh > out.log 2>&1
@@ -429,6 +448,13 @@ else
   note FAIL "sync clobbered a user-customized slash command"; fail=1
 fi
 
+if grep -q "MY CUSTOM WORKFLOW KEEP ME" .octospec/.claude/skills/octospec-workflow/SKILL.md \
+   && grep -q "MY CUSTOM WORKFLOW KEEP ME" .claude/skills/octospec-workflow/SKILL.md; then
+  note ok "user's customized canonical skill left untouched"
+else
+  note FAIL "sync clobbered a user-customized canonical skill"; fail=1
+fi
+
 if grep -q "MY OWN PR TEMPLATE KEEP ME" .github/PULL_REQUEST_TEMPLATE.md; then
   note ok "user's own PR template left untouched"
 else
@@ -439,6 +465,42 @@ if [ -f .claude/commands/octospec-go.md ] && [ -f .claude/commands/octospec-fini
   note ok "missing slash commands still installed alongside the user's own"
 else
   note FAIL "sync skipped installing missing slash commands"; fail=1
+fi
+
+cd "$REPO"
+
+# Symlink safety: a hostile checkout must not redirect any materialization write
+# outside the repository. Test a symlinked root subtree and a symlinked local
+# skill file; both runs must fail closed without changing the external targets.
+tmp10="$(mktemp -d)"; TMP_DIRS+=("$tmp10")
+outside10="$(mktemp -d)"; TMP_DIRS+=("$outside10")
+cd "$tmp10"
+git init -q
+cp -r "$REPO/templates/octospec-init" .octospec
+mkdir -p .claude "$outside10/root-target"
+ln -s "$outside10/root-target" .claude/skills
+set +e
+GLOBAL_SRC="$REPO" ./.octospec/scripts/octospec-sync.sh > symlink-root.log 2>&1
+code10a=$?
+set -e
+if [ "$code10a" -ne 0 ] && [ ! -e "$outside10/root-target/octospec-workflow/SKILL.md" ]; then
+  note ok "sync rejects symlinked root skills directory"
+else
+  note FAIL "sync followed symlinked root skills directory"; fail=1
+fi
+
+rm -rf .claude
+printf 'OUTSIDE KEEP ME\n' > "$outside10/external-skill"
+rm -f .octospec/.claude/skills/octospec-pre-pr-review/SKILL.md
+ln -s "$outside10/external-skill" .octospec/.claude/skills/octospec-pre-pr-review/SKILL.md
+set +e
+GLOBAL_SRC="$REPO" ./.octospec/scripts/octospec-sync.sh > symlink-file.log 2>&1
+code10b=$?
+set -e
+if [ "$code10b" -ne 0 ] && grep -q "OUTSIDE KEEP ME" "$outside10/external-skill"; then
+  note ok "sync rejects symlinked local skill destination"
+else
+  note FAIL "sync followed symlinked local skill destination"; fail=1
 fi
 
 cd "$REPO"

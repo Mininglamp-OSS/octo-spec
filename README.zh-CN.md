@@ -103,7 +103,10 @@ export GLOBAL_SRC=/path/to/octo-spec
 
 **接下来 loop 怎么触发:** 跟你的编码 agent 说「加个功能」/「修这个 bug」,或者用 slash
 命令显式驱动单个阶段(`/octospec-plan`、`/octospec-go`、`/octospec-check`、
-`/octospec-finish`)。4 阶段循环由 **agent** 执行 —— 没有可粘贴的 loop CLI(见下方
+`/octospec-finish`)。提 PR 前可以直接说「按规范深度审核这个分支，修复问题并提交」，触发
+随仓库分发的 `octospec-pre-pr-review` skill；它会检查完整 diff、规格一致性、安全与租户
+边界、状态补偿、异步/并发竞态、API 兼容和测试证据，但正式批准仍需独立 reviewer。
+4 阶段循环由 **agent** 执行 —— 没有可粘贴的 loop CLI(见下方
 [4 阶段循环](#4-阶段循环))。
 
 关于 Claude Code 的 slash 命令工作流,见 [`docs/CLAUDE-WORKFLOW.md`](docs/CLAUDE-WORKFLOW.md)。
@@ -267,7 +270,7 @@ octo-spec 采用 **Apache License 2.0** 许可。见 [LICENSE](LICENSE) 和 [NOT
 
 - 模板自带它自己的 `scripts/`(`octospec-sync.sh` + `octospec_sync_block.py`),所以被复制出来的 `.octospec/` 自身就带着这些 sync 脚本 —— 你不需要为了定位脚本而保留一条回到 octo-spec checkout 的路径。全局规则在 sync 时仍然来源于一个 octo-spec checkout(见 `GLOBAL_SRC`)。
 - sync 会把全局规则 vendor 进被 git 忽略的 `.octospec/_global/`,并且把 octospec 的 agent 指令块写入你的 agent 文件(`CLAUDE.md` / `AGENTS.md` / `GEMINI.md` / `QWEN.md`),写在受管标记(managed markers)之间。
-- sync 还会**物化仓库根脚手架**(工具只在仓库根才能发现的那部分):把 `.octospec/.claude/`(slash 命令 + skill)复制到仓库根 `.claude/`,把 `.octospec/.github/PULL_REQUEST_TEMPLATE.md` 复制到 `.github/`。这是 install-if-missing —— 目标位置已存在的文件保持不动,因此手写的自定义内容绝不会被覆盖。
+- sync 还会**物化仓库根脚手架**(工具只在仓库根才能发现的那部分):把 `.octospec/.claude/`(slash 命令 + skills)复制到仓库根 `.claude/`,把 `.octospec/.github/PULL_REQUEST_TEMPLATE.md` 复制到 `.github/`。所有文件都保持 install-if-missing：先把 vendored sync 脚本更新到 manifest 钉住的版本后，已接入的旧仓库可以获得后来新增的 skill，同时现有仓库自定义内容绝不会被覆盖。
 - 每次你 bump 这个 pin 时都可以重新运行;它是幂等的,并且会保留标记之外的任何内容 —— 包括文件原有的行尾(LF/CRLF)和末尾换行符。第二次运行会报告根脚手架已存在。
 - vendor 进 `.octospec/scripts/` 的脚本是本仓库中规范来源 `scripts/octospec-sync.sh` 和 `scripts/octospec_sync_block.py` 的逐字节副本;CI(`scripts/test_octospec_sync_sh.sh`)会断言它们保持完全一致,因此副本绝不会悄悄偏离被测试过的源。要升级工具本身,就从一个更新的 octo-spec checkout 重新复制模板的 `scripts/`(或仅复制这两个文件)。
 

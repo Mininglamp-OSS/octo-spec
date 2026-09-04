@@ -140,7 +140,104 @@ else
   fi
 fi
 
-# 3) Materialize repo-root scaffolding that tools only discover at the root.
+# Copy one missing file without following destination symlinks. Repository
+# checkouts are untrusted input: a symlinked .claude/.github component must not
+# redirect sync writes outside the checkout. Exit 0 = installed, 3 = exists.
+safe_copy_missing() {
+  python3 - "$1" "$2" "$3" <<'PY'
+import os
+import secrets
+import shutil
+import stat
+import sys
+
+src, dest, root = map(os.path.abspath, sys.argv[1:])
+parent_fd = None
+tmp_name = None
+try:
+    if os.path.commonpath((dest, root)) != root:
+        raise ValueError(f"destination escapes root: {dest}")
+    components = os.path.relpath(dest, root).split(os.sep)
+    if any(part in ("", ".", "..") for part in components):
+        raise ValueError(f"invalid destination path: {dest}")
+    flags = os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0)
+    parent_fd = os.open(root, flags)
+    for component in components[:-1]:
+        try:
+            next_fd = os.open(component, flags, dir_fd=parent_fd)
+        except FileNotFoundError:
+            try:
+                os.mkdir(component, dir_fd=parent_fd)
+            except FileExistsError:
+                pass
+            next_fd = os.open(component, flags, dir_fd=parent_fd)
+        os.close(parent_fd)
+        parent_fd = next_fd
+    leaf = components[-1]
+    try:
+        existing = os.stat(leaf, dir_fd=parent_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        existing = None
+    if existing is not None:
+        if stat.S_ISLNK(existing.st_mode):
+            raise ValueError(f"destination is a symlink: {dest}")
+        sys.exit(3)
+    tmp_name = f".octospec-copy-{secrets.token_hex(8)}"
+    fd = os.open(tmp_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=parent_fd)
+    with os.fdopen(fd, "wb") as out, open(src, "rb") as inp:
+        shutil.copyfileobj(inp, out)
+    os.chmod(tmp_name, stat.S_IMODE(os.stat(src).st_mode), dir_fd=parent_fd)
+    os.link(
+        tmp_name,
+        leaf,
+        src_dir_fd=parent_fd,
+        dst_dir_fd=parent_fd,
+        follow_symlinks=False,
+    )  # atomic create relative to the verified parent FD
+except (OSError, ValueError) as exc:
+    print(f"octospec: refused unsafe copy to {dest}: {exc}", file=sys.stderr)
+    sys.exit(1)
+finally:
+    if parent_fd is not None:
+        if tmp_name is not None:
+            try:
+                os.unlink(tmp_name, dir_fd=parent_fd)
+            except FileNotFoundError:
+                pass
+        os.close(parent_fd)
+PY
+}
+
+# 3) Install newly shipped skills into the repo-local source tree. Older
+# onboarded repositories do not contain skills added by a newer octo-spec pin;
+# copying only missing files from GLOBAL_SRC closes that upgrade gap without
+# overwriting any repository-owned customization.
+CANONICAL_SKILLS="$GLOBAL_SRC/templates/octospec-init/.claude/skills"
+LOCAL_SKILLS="$OCTOSPEC_DIR/.claude/skills"
+if [ -d "$CANONICAL_SKILLS" ]; then
+  installed_skills=0
+  kept_skills=0
+  while IFS= read -r src; do
+    rel="${src#"$CANONICAL_SKILLS"/}"
+    dest="$LOCAL_SKILLS/$rel"
+    set +e
+    safe_copy_missing "$src" "$dest" "$OCTOSPEC_DIR"
+    copy_rc=$?
+    set -e
+    if [ "$copy_rc" -eq 0 ]; then
+      installed_skills=$((installed_skills + 1))
+    elif [ "$copy_rc" -eq 3 ]; then
+      kept_skills=$((kept_skills + 1))
+    else
+      exit "$copy_rc"
+    fi
+  done <<EOF
+$(find "$CANONICAL_SKILLS" -type f)
+EOF
+  echo "octospec: canonical skills -> installed $installed_skills, kept $kept_skills existing"
+fi
+
+# 4) Materialize repo-root scaffolding that tools only discover at the root.
 # The template tree carries .octospec/.claude/ (slash commands + skills) and
 # .octospec/.github/PULL_REQUEST_TEMPLATE.md, but Claude Code only discovers
 # slash commands/skills under the REPO ROOT .claude/, and GitHub only applies a
@@ -158,12 +255,16 @@ install_missing() {
   while IFS= read -r src; do
     rel="${src#"$src_dir"/}"
     dest="$dest_dir/$rel"
-    if [ -e "$dest" ]; then
+    set +e
+    safe_copy_missing "$src" "$dest" "$REPO_ROOT"
+    copy_rc=$?
+    set -e
+    if [ "$copy_rc" -eq 0 ]; then
+      installed=$((installed + 1))
+    elif [ "$copy_rc" -eq 3 ]; then
       skipped=$((skipped + 1))
     else
-      mkdir -p "$(dirname "$dest")"
-      cp "$src" "$dest"
-      installed=$((installed + 1))
+      return "$copy_rc"
     fi
   done <<EOF
 $(find "$src_dir" -type f)
@@ -176,12 +277,16 @@ install_missing "$OCTOSPEC_DIR/.claude" "$REPO_ROOT/.claude" ".claude (slash com
 PRT_SRC="$OCTOSPEC_DIR/.github/PULL_REQUEST_TEMPLATE.md"
 PRT_DEST="$REPO_ROOT/.github/PULL_REQUEST_TEMPLATE.md"
 if [ -f "$PRT_SRC" ]; then
-  if [ -e "$PRT_DEST" ]; then
+  set +e
+  safe_copy_missing "$PRT_SRC" "$PRT_DEST" "$REPO_ROOT"
+  copy_rc=$?
+  set -e
+  if [ "$copy_rc" -eq 0 ]; then
+    echo "octospec: .github/PULL_REQUEST_TEMPLATE.md -> installed"
+  elif [ "$copy_rc" -eq 3 ]; then
     echo "octospec: .github/PULL_REQUEST_TEMPLATE.md -> kept existing"
   else
-    mkdir -p "$REPO_ROOT/.github"
-    cp "$PRT_SRC" "$PRT_DEST"
-    echo "octospec: .github/PULL_REQUEST_TEMPLATE.md -> installed"
+    exit "$copy_rc"
   fi
 fi
 

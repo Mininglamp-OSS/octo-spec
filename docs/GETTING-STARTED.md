@@ -91,11 +91,26 @@ Nothing special to do. The spawned agent works in the same checkout, so it reads
 the same `.octospec/`. For Codex (reads `AGENTS.md`), the octospec pointer is
 already there; for a code review, point Codex at the rules the diff touches.
 
-### C) Pure agent / no slash commands
+### C) Pre-PR deep review
+
+After implementation, ask the agent in plain language:
+
+```
+Review this branch against its brief before PR. Fix P0/P1 findings, run the
+relevant full gates, and commit the reviewed changes; do not push.
+```
+
+The `octospec-pre-pr-review` skill reviews the cumulative branch plus relevant
+uncommitted changes, checks cross-repo contracts, security/tenant boundaries,
+state transitions and compensation, async/concurrency races, API compatibility,
+and test hermeticity. It may prepare commits when explicitly requested, but the
+formal PR still requires an independent reviewer.
+
+### D) Pure agent / no slash commands
 
 Any agent that opens the repo can read `.octospec/rules/_index.yaml`, see which
 rules match the files it's touching, and read those rule files directly. The
-slash commands are a convenience, not a requirement.
+slash commands and skills are conveniences, not requirements.
 
 ---
 

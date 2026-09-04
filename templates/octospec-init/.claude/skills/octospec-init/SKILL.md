@@ -82,10 +82,12 @@ scaffolding that tools only discover at the root:
 - copies `.octospec/.github/PULL_REQUEST_TEMPLATE.md` to `.github/` so GitHub
   applies the PR template (the body the Finish phase pre-fills).
 
-This step is **install-if-missing**: any `.claude/` or `.github/` file you have
-already customized at the root is left untouched, and re-running sync is
-idempotent. Commit the materialized root `.claude/` and `.github/` so teammates
-get them on a plain `git pull`.
+This step is **install-if-missing** for every `.claude/` and `.github/` file.
+After their vendored sync script is updated to the pinned release, repositories
+onboarded before a skill existed receive that missing skill on upgrade, while
+existing repository customizations remain untouched. Re-running sync is
+idempotent. Commit the materialized root `.claude/` and `.github/` so
+teammates get them on a plain `git pull`.
 
 ### 4. Confirm the agent-instruction block landed
 
